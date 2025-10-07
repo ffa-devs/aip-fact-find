@@ -23,12 +23,5 @@ jobs:
         with:
           version: latest
 
-      - name: Debug secrets
-        run: |
-          echo "SUPABASE_PROJECT_ID length: ${#SUPABASE_PROJECT_ID}"
-          echo "SUPABASE_ACCESS_TOKEN length: ${#SUPABASE_ACCESS_TOKEN}"
-          echo "SUPABASE_DB_PASSWORD length: ${#SUPABASE_DB_PASSWORD}"
-          echo "Project ID (masked): ${SUPABASE_PROJECT_ID:0:4}...${SUPABASE_PROJECT_ID: -4}"
-
-      - run: supabase link --project-ref $SUPABASE_PROJECT_ID --debug
+      - run: supabase link --project-ref $SUPABASE_PROJECT_ID
       - run: supabase db push --include-all
