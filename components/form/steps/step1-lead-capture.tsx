@@ -17,10 +17,11 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { PhoneNumberInput } from '@/components/ui/phone-input';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { useState } from 'react';
 
 interface Step1Props {
   onNext: () => void;
@@ -28,9 +29,21 @@ interface Step1Props {
 
 export function Step1LeadCapture({ onNext }: Step1Props) {
   const { step1, updateStep1, setGhlContactId, setGhlOpportunityId, ghlContactId } = useFormStore();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<Step1FormData>({
-    resolver: zodResolver(step1Schema),
+    resolver: async (values, context, options) => {
+      // Convert date_of_birth to Date if it's a string
+      const processedValues = {
+        ...values,
+        date_of_birth: values.date_of_birth instanceof Date 
+          ? values.date_of_birth 
+          : typeof values.date_of_birth === 'string'
+          ? new Date(values.date_of_birth)
+          : values.date_of_birth,
+      };
+      return zodResolver(step1Schema)(processedValues, context, options);
+    },
     mode: 'onBlur', // Validate on blur
     reValidateMode: 'onChange', // Re-validate on change after first validation
     defaultValues: {
@@ -43,42 +56,48 @@ export function Step1LeadCapture({ onNext }: Step1Props) {
   });
 
   const onSubmit = async (data: Step1FormData) => {
-    updateStep1(data);
+    setIsSubmitting(true);
     
-    // Create GHL contact if not already created
-    if (!ghlContactId) {
-      try {
-        const response = await fetch('/api/gohigh/create-lead', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data),
-        });
-
-        const result = await response.json();
-
-        if (result.success && result.contactId) {
-          setGhlContactId(result.contactId);
-          if (result.opportunityId) {
-            setGhlOpportunityId(result.opportunityId);
-          }
-          toast.success('Lead created successfully!', {
-            description: 'Your information has been saved',
+    try {
+      updateStep1(data);
+      
+      // Create GHL contact if not already created
+      if (!ghlContactId) {
+        try {
+          const response = await fetch('/api/gohigh/create-lead', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
           });
-        } else {
-          console.error('Failed to create GHL contact:', result.error);
+
+          const result = await response.json();
+
+          if (result.success && result.contactId) {
+            setGhlContactId(result.contactId);
+            if (result.opportunityId) {
+              setGhlOpportunityId(result.opportunityId);
+            }
+            toast.success('Lead created successfully!', {
+              description: 'Your information has been saved',
+            });
+          } else {
+            console.error('Failed to create GHL contact:', result.error);
+            toast.error('Note: Could not sync with CRM', {
+              description: 'Your form data is still saved locally',
+            });
+          }
+        } catch (error) {
+          console.error('Error creating GHL contact:', error);
           toast.error('Note: Could not sync with CRM', {
             description: 'Your form data is still saved locally',
           });
         }
-      } catch (error) {
-        console.error('Error creating GHL contact:', error);
-        toast.error('Note: Could not sync with CRM', {
-          description: 'Your form data is still saved locally',
-        });
       }
+      
+      onNext();
+    } finally {
+      setIsSubmitting(false);
     }
-    
-    onNext();
   };
 
   const onError = () => {
@@ -233,8 +252,9 @@ export function Step1LeadCapture({ onNext }: Step1Props) {
         </div>
 
         <div className="flex justify-end pt-4 border-t">
-          <Button type="submit" size="lg">
-            Continue
+          <Button type="submit" size="lg" disabled={isSubmitting}>
+            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isSubmitting ? 'Creating Lead...' : 'Continue'}
           </Button>
         </div>
       </form>
