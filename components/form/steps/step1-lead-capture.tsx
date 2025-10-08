@@ -231,6 +231,12 @@ export function Step1LeadCapture({ onNext }: Step1Props) {
             )}
           />
         </div>
+
+        <div className="flex justify-end pt-4 border-t">
+          <Button type="submit" size="lg">
+            Continue
+          </Button>
+        </div>
       </form>
     </Form>
   );

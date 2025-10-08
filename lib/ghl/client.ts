@@ -1,7 +1,7 @@
 /**
  * GoHighLevel API Client
  * 
- * This client handles all interactions with the GoHighLevel API
+ * This client handles all interactions with the GoHighLevel API v2
  * using OAuth 2.0 tokens stored in Supabase with automatic refresh
  */
 
@@ -9,7 +9,7 @@ import { getValidAccessToken, getDefaultLocationId } from './oauth';
 
 // GHL API Configuration
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
-const GHL_API_VERSION = 'v1';
+const GHL_API_VERSION = '2021-07-28'; // API version header
 
 export interface GHLContact {
   firstName: string;
@@ -18,7 +18,7 @@ export interface GHLContact {
   phone: string;
   dateOfBirth?: string;
   tags?: string[];
-  customFields?: Record<string, string | number | boolean>;
+  // customFields?: Array<{ id: string; key: string; field_value: string | number | boolean }>; // TODO: Map custom fields in settings
   source?: string;
 }
 
@@ -36,7 +36,7 @@ export interface GHLContactResponse {
 
 export interface GHLUpdateData {
   tags?: string[];
-  customFields?: Record<string, string | number | boolean>;
+  // customFields?: Array<{ id: string; key: string; field_value: string | number | boolean }>; // TODO: Map custom fields in settings
   source?: string;
 }
 
@@ -100,7 +100,7 @@ class GoHighLevelClient {
     return {
       'Authorization': `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
-      'Version': '2021-07-28',
+      'Version': GHL_API_VERSION,
     };
   }
 
@@ -112,7 +112,7 @@ class GoHighLevelClient {
       const headers = await this.getAuthHeaders();
       const locationId = this.locationId || await getDefaultLocationId();
 
-      const response = await fetch(`${GHL_API_BASE}/${GHL_API_VERSION}/contacts/`, {
+      const response = await fetch(`${GHL_API_BASE}/contacts/`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
@@ -123,7 +123,7 @@ class GoHighLevelClient {
           phone: data.phone,
           dateOfBirth: data.dateOfBirth,
           tags: data.tags || [],
-          customFields: data.customFields || {},
+          // customFields: data.customFields || [], // TODO: Map custom fields
           source: data.source || 'AIP Application',
         }),
       });
@@ -154,13 +154,13 @@ class GoHighLevelClient {
       const headers = await this.getAuthHeaders();
 
       const response = await fetch(
-        `${GHL_API_BASE}/${GHL_API_VERSION}/contacts/${contactId}`,
+        `${GHL_API_BASE}/contacts/${contactId}`,
         {
           method: 'PUT',
           headers,
           body: JSON.stringify({
             tags: data.tags,
-            customFields: data.customFields,
+            // customFields: data.customFields, // TODO: Map custom fields
             source: data.source,
           }),
         }
@@ -188,7 +188,7 @@ class GoHighLevelClient {
       const headers = await this.getAuthHeaders();
 
       const response = await fetch(
-        `${GHL_API_BASE}/${GHL_API_VERSION}/contacts/${contactId}/tags`,
+        `${GHL_API_BASE}/contacts/${contactId}/tags`,
         {
           method: 'POST',
           headers,
@@ -218,7 +218,7 @@ class GoHighLevelClient {
       const headers = await this.getAuthHeaders();
 
       const response = await fetch(
-        `${GHL_API_BASE}/${GHL_API_VERSION}/contacts/${contactId}/tags`,
+        `${GHL_API_BASE}/contacts/${contactId}/tags`,
         {
           method: 'DELETE',
           headers,
@@ -248,7 +248,7 @@ class GoHighLevelClient {
       const headers = await this.getAuthHeaders();
 
       const response = await fetch(
-        `${GHL_API_BASE}/${GHL_API_VERSION}/pipelines/${pipelineId}`,
+        `${GHL_API_BASE}/pipelines/${pipelineId}`,
         {
           method: 'GET',
           headers,
@@ -278,7 +278,7 @@ class GoHighLevelClient {
       const locationId = this.locationId || await getDefaultLocationId();
 
       const response = await fetch(
-        `${GHL_API_BASE}/${GHL_API_VERSION}/opportunities/`,
+        `${GHL_API_BASE}/opportunities/`,
         {
           method: 'POST',
           headers,
@@ -322,7 +322,7 @@ class GoHighLevelClient {
       const headers = await this.getAuthHeaders();
 
       const response = await fetch(
-        `${GHL_API_BASE}/${GHL_API_VERSION}/opportunities/${opportunityId}`,
+        `${GHL_API_BASE}/opportunities/${opportunityId}`,
         {
           method: 'PUT',
           headers,
@@ -357,7 +357,7 @@ class GoHighLevelClient {
       const headers = await this.getAuthHeaders();
 
       const response = await fetch(
-        `${GHL_API_BASE}/${GHL_API_VERSION}/opportunities/${opportunityId}`,
+        `${GHL_API_BASE}/opportunities/${opportunityId}`,
         {
           method: 'PUT',
           headers,
@@ -380,8 +380,6 @@ class GoHighLevelClient {
       return false;
     }
   }
-
-
 }
 
 // Export singleton instance (no location ID - will use default from Supabase)

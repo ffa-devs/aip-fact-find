@@ -1,0 +1,140 @@
+{
+  "description": "Custom Fields Mapping for GoHighLevel - Map each custom field with its GHL ID, key, and type",
+  "instructions": "Replace 'FIELD_ID_HERE' with actual custom field IDs from your GHL account (Settings > Custom Fields)",
+  
+  "step2_fields": {
+    "nationality": {
+      "id": "FIELD_ID_HERE",
+      "key": "nationality",
+      "type": "TEXT",
+      "description": "Contact's nationality"
+    },
+    "marital_status": {
+      "id": "FIELD_ID_HERE",
+      "key": "marital_status",
+      "type": "TEXT",
+      "description": "Marital status (married/single/divorced/widowed/civil_partnership)"
+    },
+    "has_co_applicants": {
+      "id": "FIELD_ID_HERE",
+      "key": "has_co_applicants",
+      "type": "CHECKBOX",
+      "description": "Whether applicant has co-applicants"
+    }
+  },
+
+  "step3_fields": {
+    "homeowner_or_tenant": {
+      "id": "FIELD_ID_HERE",
+      "key": "homeowner_or_tenant",
+      "type": "TEXT",
+      "description": "Current housing status (homeowner/tenant)"
+    },
+    "tax_country": {
+      "id": "FIELD_ID_HERE",
+      "key": "tax_country",
+      "type": "TEXT",
+      "description": "Country where applicant pays taxes"
+    },
+    "has_children": {
+      "id": "FIELD_ID_HERE",
+      "key": "has_children",
+      "type": "CHECKBOX",
+      "description": "Whether applicant has children"
+    }
+  },
+
+  "step4_fields": {
+    "employment_status": {
+      "id": "FIELD_ID_HERE",
+      "key": "employment_status",
+      "type": "TEXT",
+      "description": "Employment status (employed/self_employed/director/retired/unemployed)"
+    },
+    "annual_income": {
+      "id": "FIELD_ID_HERE",
+      "key": "annual_income",
+      "type": "NUMERICAL",
+      "description": "Annual income in EUR"
+    },
+    "has_credit_issues": {
+      "id": "FIELD_ID_HERE",
+      "key": "has_credit_issues",
+      "type": "CHECKBOX",
+      "description": "Whether applicant has credit or legal issues"
+    }
+  },
+
+  "step5_fields": {
+    "has_rental_properties": {
+      "id": "FIELD_ID_HERE",
+      "key": "has_rental_properties",
+      "type": "CHECKBOX",
+      "description": "Whether applicant owns rental properties"
+    },
+    "rental_property_count": {
+      "id": "FIELD_ID_HERE",
+      "key": "rental_property_count",
+      "type": "NUMERICAL",
+      "description": "Number of rental properties owned"
+    }
+  },
+
+  "step6_fields": {
+    "purchase_price": {
+      "id": "FIELD_ID_HERE",
+      "key": "purchase_price",
+      "type": "NUMERICAL",
+      "description": "Purchase price of Spanish property in EUR"
+    },
+    "deposit_available": {
+      "id": "FIELD_ID_HERE",
+      "key": "deposit_available",
+      "type": "NUMERICAL",
+      "description": "Deposit available in EUR"
+    },
+    "loan_amount_needed": {
+      "id": "FIELD_ID_HERE",
+      "key": "loan_amount_needed",
+      "type": "NUMERICAL",
+      "description": "Loan amount needed (calculated: purchase_price - deposit_available)"
+    },
+    "ltv_percentage": {
+      "id": "FIELD_ID_HERE",
+      "key": "ltv_percentage",
+      "type": "NUMERICAL",
+      "description": "Loan to Value percentage (calculated)"
+    },
+    "property_type": {
+      "id": "FIELD_ID_HERE",
+      "key": "property_type",
+      "type": "TEXT",
+      "description": "Type of property (apartment/villa/townhouse/land/commercial)"
+    },
+    "home_status": {
+      "id": "FIELD_ID_HERE",
+      "key": "home_status",
+      "type": "TEXT",
+      "description": "Intended use (primary_residence/second_home/investment)"
+    },
+    "urgency_level": {
+      "id": "FIELD_ID_HERE",
+      "key": "urgency_level",
+      "type": "TEXT",
+      "description": "How soon they want to proceed (very_high/high/medium/low/no_rush)"
+    },
+    "application_status": {
+      "id": "FIELD_ID_HERE",
+      "key": "application_status",
+      "type": "TEXT",
+      "description": "Current application status (Completed/In Progress/Abandoned)"
+    }
+  },
+
+  "notes": [
+    "Custom field IDs are permanent once created in GHL",
+    "Types: TEXT, NUMERICAL, CHECKBOX, DATE, MONETARY, PHONE, EMAIL, TEXTAREA, URL",
+    "Get custom field IDs from: GHL Settings > Custom Fields > Click on field > Copy ID from URL or API",
+    "After mapping IDs, update the service.ts file to use these values"
+  ]
+}

@@ -40,25 +40,29 @@ export function FormNavigation({
       </div>
 
       <div className="flex gap-3">
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={onSave}
-          className="gap-2"
-        >
-          <Save className="w-4 h-4" />
-          Save for Later
-        </Button>
+        {currentStep > 1 && (
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={onSave}
+            className="gap-2"
+          >
+            <Save className="w-4 h-4" />
+            Save for Later
+          </Button>
+        )}
 
-        <Button
-          type="submit"
-          onClick={onNext}
-          disabled={isNextDisabled}
-          className="gap-2"
-        >
-          {nextLabel || (isLastStep ? 'Submit Application' : 'Continue')}
-          {!isLastStep && <ArrowRight className="w-4 h-4" />}
-        </Button>
+        {onNext && (
+          <Button
+            type="submit"
+            onClick={onNext}
+            disabled={isNextDisabled}
+            className="gap-2"
+          >
+            {nextLabel || (isLastStep ? 'Submit Application' : 'Continue')}
+            {!isLastStep && <ArrowRight className="w-4 h-4" />}
+          </Button>
+        )}
       </div>
     </div>
   );

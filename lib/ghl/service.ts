@@ -96,13 +96,14 @@ export async function updateStep2InGHL(
     tags.push('Has-Co-Applicant');
   }
 
-  const customFields = {
-    nationality: data.nationality,
-    marital_status: data.marital_status.replace('_', ' '),
-    has_co_applicants: data.has_co_applicants,
-  };
+  // TODO: Map custom fields with proper IDs from settings
+  // const customFields = [
+  //   { id: 'xxx', key: 'nationality', field_value: data.nationality },
+  //   { id: 'xxx', key: 'marital_status', field_value: data.marital_status.replace('_', ' ') },
+  //   { id: 'xxx', key: 'has_co_applicants', field_value: data.has_co_applicants },
+  // ];
 
-  await ghlClient.updateContact(contactId, { tags, customFields });
+  await ghlClient.updateContact(contactId, { tags });
   await ghlClient.removeTags(contactId, ['AIP-Step1-Only']);
 }
 
@@ -129,13 +130,14 @@ export async function updateStep3InGHL(
     tags.push('Has-Children');
   }
 
-  const customFields = {
-    homeowner_or_tenant: data.homeowner_or_tenant,
-    tax_country: data.tax_country,
-    has_children: data.has_children,
-  };
+  // TODO: Map custom fields with proper IDs from settings
+  // const customFields = [
+  //   { id: 'xxx', key: 'homeowner_or_tenant', field_value: data.homeowner_or_tenant },
+  //   { id: 'xxx', key: 'tax_country', field_value: data.tax_country },
+  //   { id: 'xxx', key: 'has_children', field_value: data.has_children },
+  // ];
 
-  await ghlClient.updateContact(contactId, { tags, customFields });
+  await ghlClient.updateContact(contactId, { tags });
 }
 
 /**
@@ -169,13 +171,14 @@ export async function updateStep4InGHL(
     tags.push('Credit-Issues-Declared');
   }
 
-  const customFields = {
-    employment_status: data.employment_status,
-    annual_income: data.annual_income,
-    has_credit_issues: data.has_credit_or_legal_issues,
-  };
+  // TODO: Map custom fields with proper IDs from settings
+  // const customFields = [
+  //   { id: 'xxx', key: 'employment_status', field_value: data.employment_status },
+  //   { id: 'xxx', key: 'annual_income', field_value: data.annual_income },
+  //   { id: 'xxx', key: 'has_credit_issues', field_value: data.has_credit_or_legal_issues },
+  // ];
 
-  await ghlClient.updateContact(contactId, { tags, customFields });
+  await ghlClient.updateContact(contactId, { tags });
 }
 
 /**
@@ -198,12 +201,13 @@ export async function updateStep5InGHL(
     }
   }
 
-  const customFields = {
-    has_rental_properties: data.has_rental_properties,
-    rental_property_count: data.property_count || 0,
-  };
+  // TODO: Map custom fields with proper IDs from settings
+  // const customFields = [
+  //   { id: 'xxx', key: 'has_rental_properties', field_value: data.has_rental_properties },
+  //   { id: 'xxx', key: 'rental_property_count', field_value: data.property_count || 0 },
+  // ];
 
-  await ghlClient.updateContact(contactId, { tags, customFields });
+  await ghlClient.updateContact(contactId, { tags });
 }
 
 /**
@@ -249,21 +253,22 @@ export async function completeApplicationInGHL(
     tags.push('Investment-Property');
   }
 
-  // Calculate LTV (Loan to Value)
-  const ltv = ((data.purchase_price - data.deposit_available) / data.purchase_price) * 100;
+  // Calculate LTV (Loan to Value) - will be used when custom fields are mapped
+  // const ltv = ((data.purchase_price - data.deposit_available) / data.purchase_price) * 100;
 
-  const customFields = {
-    purchase_price: data.purchase_price,
-    deposit_available: data.deposit_available,
-    loan_amount_needed: data.purchase_price - data.deposit_available,
-    ltv_percentage: Math.round(ltv),
-    property_type: data.property_type,
-    home_status: data.home_status,
-    urgency_level: data.urgency_level,
-    application_status: 'Completed',
-  };
+  // TODO: Map custom fields with proper IDs from settings
+  // const customFields = [
+  //   { id: 'xxx', key: 'purchase_price', field_value: data.purchase_price },
+  //   { id: 'xxx', key: 'deposit_available', field_value: data.deposit_available },
+  //   { id: 'xxx', key: 'loan_amount_needed', field_value: data.purchase_price - data.deposit_available },
+  //   { id: 'xxx', key: 'ltv_percentage', field_value: Math.round(ltv) },
+  //   { id: 'xxx', key: 'property_type', field_value: data.property_type },
+  //   { id: 'xxx', key: 'home_status', field_value: data.home_status },
+  //   { id: 'xxx', key: 'urgency_level', field_value: data.urgency_level },
+  //   { id: 'xxx', key: 'application_status', field_value: 'Completed' },
+  // ];
 
-  await ghlClient.updateContact(contactId, { tags, customFields });
+  await ghlClient.updateContact(contactId, { tags });
 
   // Move opportunity to "AIP Fact Find Submitted" stage
   const submittedStageId = await getStageIdByName('AIP Fact Find Submitted');

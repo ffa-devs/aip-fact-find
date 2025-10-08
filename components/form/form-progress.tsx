@@ -3,6 +3,7 @@
 import { useFormStore } from '@/lib/store/form-store';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
+import { useEffect, useState } from 'react';
 
 const steps = [
   { number: 1, title: 'Get Started', progress: 20 },
@@ -16,6 +17,26 @@ const steps = [
 export function FormProgress() {
   const currentStep = useFormStore((state) => state.currentStep);
   const progress = useFormStore((state) => state.getProgress());
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // Prevent hydration mismatch by showing default state during SSR
+  if (!isClient) {
+    return (
+      <div className="w-full mb-8 space-y-4">
+        <div className="space-y-2">
+          <div className="flex justify-between text-sm text-muted-foreground">
+            <span>Step 1 of 6</span>
+            <span>20% Complete</span>
+          </div>
+          <Progress value={20} className="h-2" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full mb-8 space-y-4">

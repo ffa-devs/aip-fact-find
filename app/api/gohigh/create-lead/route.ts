@@ -5,16 +5,15 @@
  * Creates a new contact in GoHighLevel when Step 1 is completed
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createLeadInGHL } from '@/lib/ghl/service';
 import { step1Schema } from '@/lib/validations/form-schemas';
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
-    // Parse request body
     const body = await request.json();
 
-    // Validate data
+    // Validate the request body with step 1 schema
     const validatedData = step1Schema.parse(body);
 
     // Create contact and opportunity in GHL

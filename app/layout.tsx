@@ -15,7 +15,34 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "AIP Fact Find - Spanish Property Mortgage Application",
-  description: "Complete your Spanish property mortgage application in minutes",
+  description: "Complete your Spanish property mortgage application in minutes with FFA Mortgage Services",
+  icons: {
+    icon: [
+      { url: '/favicon.png', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/ffa-logo.png', type: 'image/png' },
+    ],
+  },
+  openGraph: {
+    title: "AIP Fact Find - Spanish Property Mortgage Application",
+    description: "Complete your Spanish property mortgage application in minutes with FFA Mortgage Services",
+    images: [
+      {
+        url: '/ffa-logo.png',
+        width: 1200,
+        height: 630,
+        alt: 'FFA Mortgage Services',
+      },
+    ],
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: "AIP Fact Find - Spanish Property Mortgage Application",
+    description: "Complete your Spanish property mortgage application in minutes with FFA Mortgage Services",
+    images: ['/ffa-logo.png'],
+  },
 };
 
 export default function RootLayout({
