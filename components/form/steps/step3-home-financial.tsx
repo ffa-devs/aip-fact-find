@@ -29,12 +29,49 @@ import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 
 interface Step3Props {
-  onNext: () => void;
+  onNext: (formData?: Step3FormData) => void;
+  applicantIndex?: number;
+  isMultiApplicant?: boolean;
+  hideNavigation?: boolean;
 }
 
-export function Step3HomeFinancial({ onNext }: Step3Props) {
+export function Step3HomeFinancial({ 
+  onNext, 
+  applicantIndex = 0, 
+  isMultiApplicant = false,
+  hideNavigation = false 
+}: Step3Props) {
   const { step2, step3, updateStep3 } = useFormStore();
-  const [showChildren, setShowChildren] = useState(step3.has_children);
+  
+  // Get current applicant data
+  const getCurrentApplicantData = () => {
+    if (applicantIndex === 0) {
+      return step3; // Primary applicant
+    } else {
+      const coApplicantIndex = applicantIndex - 1;
+      return step3.co_applicants?.[coApplicantIndex] || {
+        current_address: '',
+        move_in_date: null,
+        homeowner_or_tenant: '',
+        monthly_mortgage_or_rent: 0,
+        monthly_payment_currency: 'EUR',
+        current_property_value: 0,
+        property_value_currency: 'EUR',
+        mortgage_outstanding: 0,
+        mortgage_outstanding_currency: 'EUR',
+        lender_or_landlord_details: '',
+        previous_address: '',
+        previous_move_in_date: null,
+        previous_move_out_date: null,
+        tax_country: '',
+        has_children: false,
+        children: [],
+      };
+    }
+  };
+
+  const currentData = getCurrentApplicantData();
+  const [showChildren, setShowChildren] = useState(currentData.has_children);
 
   const form = useForm<Step3FormData>({
     resolver: async (values, context, options) => {
@@ -70,28 +107,28 @@ export function Step3HomeFinancial({ onNext }: Step3Props) {
     mode: 'onSubmit',
     reValidateMode: 'onSubmit',
     defaultValues: {
-      current_address: step3.current_address,
-      move_in_date: step3.move_in_date 
-        ? (step3.move_in_date instanceof Date ? step3.move_in_date : new Date(step3.move_in_date))
+      current_address: currentData.current_address,
+      move_in_date: currentData.move_in_date 
+        ? (currentData.move_in_date instanceof Date ? currentData.move_in_date : new Date(currentData.move_in_date))
         : undefined,
-      homeowner_or_tenant: step3.homeowner_or_tenant as 'homeowner' | 'tenant' | undefined,
-      monthly_mortgage_or_rent: step3.monthly_mortgage_or_rent || 0,
-      monthly_payment_currency: step3.monthly_payment_currency || 'EUR',
-      current_property_value: step3.current_property_value || 0,
-      property_value_currency: step3.property_value_currency || 'EUR',
-      mortgage_outstanding: step3.mortgage_outstanding || 0,
-      mortgage_outstanding_currency: step3.mortgage_outstanding_currency || 'EUR',
-      lender_or_landlord_details: step3.lender_or_landlord_details,
-      previous_address: step3.previous_address,
-      previous_move_in_date: step3.previous_move_in_date 
-        ? (step3.previous_move_in_date instanceof Date ? step3.previous_move_in_date : new Date(step3.previous_move_in_date))
+      homeowner_or_tenant: currentData.homeowner_or_tenant as 'homeowner' | 'tenant' | undefined,
+      monthly_mortgage_or_rent: currentData.monthly_mortgage_or_rent || 0,
+      monthly_payment_currency: currentData.monthly_payment_currency || 'EUR',
+      current_property_value: currentData.current_property_value || 0,
+      property_value_currency: currentData.property_value_currency || 'EUR',
+      mortgage_outstanding: currentData.mortgage_outstanding || 0,
+      mortgage_outstanding_currency: currentData.mortgage_outstanding_currency || 'EUR',
+      lender_or_landlord_details: currentData.lender_or_landlord_details,
+      previous_address: currentData.previous_address,
+      previous_move_in_date: currentData.previous_move_in_date 
+        ? (currentData.previous_move_in_date instanceof Date ? currentData.previous_move_in_date : new Date(currentData.previous_move_in_date))
         : undefined,
-      previous_move_out_date: step3.previous_move_out_date 
-        ? (step3.previous_move_out_date instanceof Date ? step3.previous_move_out_date : new Date(step3.previous_move_out_date))
+      previous_move_out_date: currentData.previous_move_out_date 
+        ? (currentData.previous_move_out_date instanceof Date ? currentData.previous_move_out_date : new Date(currentData.previous_move_out_date))
         : undefined,
-      tax_country: step3.tax_country || step2.nationality || '',
-      has_children: step3.has_children,
-      children: step3.children?.map(child => ({
+      tax_country: currentData.tax_country || step2.nationality || '',
+      has_children: currentData.has_children,
+      children: currentData.children?.map(child => ({
         ...child,
         date_of_birth: child.date_of_birth instanceof Date ? child.date_of_birth : new Date(child.date_of_birth)
       })) || [],
@@ -106,8 +143,14 @@ export function Step3HomeFinancial({ onNext }: Step3Props) {
   }, [step2.nationality, form]);
 
   const onSubmit = async (data: Step3FormData) => {
-    updateStep3(data);
-    onNext();
+    if (isMultiApplicant) {
+      // For multi-applicant mode, pass data to parent handler
+      onNext(data);
+    } else {
+      // For single applicant mode, update store and proceed
+      updateStep3(data);
+      onNext();
+    }
   };
 
   const onError = () => {
@@ -433,7 +476,7 @@ export function Step3HomeFinancial({ onNext }: Step3Props) {
           </Card>
         </div>
 
-        <FormNavigation showSaveForLater={true} />
+        {!hideNavigation && <FormNavigation showSaveForLater={true} />}
       </form>
     </Form>
   );

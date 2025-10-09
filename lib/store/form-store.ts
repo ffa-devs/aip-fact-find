@@ -34,11 +34,13 @@ const initialState: FormState = {
     tax_country: '',
     has_children: false,
     children: [],
+    co_applicants: [],
   },
   step4: {
     employment_status: '',
     employment_details: {},
     financial_commitments: {},
+    co_applicants: [],
   },
   step5: {
     has_rental_properties: false,

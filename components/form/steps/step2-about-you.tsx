@@ -1,6 +1,6 @@
 'use client';
 
-import { useForm } from 'react-hook-form';
+import { useForm, FieldErrors } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useFormStore } from '@/lib/store/form-store';
 import { step2Schema, Step2FormData } from '@/lib/validations/form-schemas';
@@ -43,8 +43,8 @@ export function Step2AboutYou({ onNext }: Step2Props) {
 
   const form = useForm<Step2FormData>({
     resolver: zodResolver(step2Schema),
-    mode: 'onSubmit', // Only validate on submit
-    reValidateMode: 'onSubmit', // Only re-validate on submit
+    mode: 'onBlur', // Validate on blur for better UX
+    reValidateMode: 'onChange', // Re-validate on change
     defaultValues: {
       nationality: step2.nationality || '',
       marital_status: step2.marital_status || undefined,
@@ -69,6 +69,8 @@ export function Step2AboutYou({ onNext }: Step2Props) {
   }, [step1.mobile, step2.nationality, form]);
 
   const onSubmit = async (data: Step2FormData) => {
+    console.log('Step 2 Form Data:', data);
+    
     // Transform co_applicants to match Applicant type if needed
     const transformedData = {
       ...data,
@@ -77,11 +79,15 @@ export function Step2AboutYou({ onNext }: Step2Props) {
         applicant_order: index + 2, // Primary is 1, co-applicants start at 2
       })) || [],
     };
+    
+    console.log('Step 2 Transformed Data:', transformedData);
     updateStep2(transformedData);
     onNext();
   };
 
-  const onError = () => {
+  const onError = (errors: FieldErrors<Step2FormData>) => {
+    console.log('Step 2 Validation Errors:', errors);
+    
     // Show toast notification
     toast.error('Please fill in all required fields correctly', {
       description: 'Check the highlighted fields below',

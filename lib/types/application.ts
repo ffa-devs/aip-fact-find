@@ -158,6 +158,24 @@ export interface FormState {
     tax_country: string;
     has_children: boolean;
     children: Child[];
+    co_applicants: Array<{
+      current_address: string;
+      move_in_date: Date | null;
+      homeowner_or_tenant: HomeownerStatus | '';
+      monthly_mortgage_or_rent: number;
+      monthly_payment_currency: string;
+      current_property_value: number;
+      property_value_currency: string;
+      mortgage_outstanding: number;
+      mortgage_outstanding_currency: string;
+      lender_or_landlord_details: string;
+      previous_address: string;
+      previous_move_in_date: Date | null;
+      previous_move_out_date: Date | null;
+      tax_country: string;
+      has_children: boolean;
+      children: Child[];
+    }>;
   };
   
   // Step 4: Employment
@@ -165,6 +183,11 @@ export interface FormState {
     employment_status: EmploymentStatus | '';
     employment_details: EmploymentDetails;
     financial_commitments: FinancialCommitments;
+    co_applicants: Array<{
+      employment_status: EmploymentStatus | '';
+      employment_details: EmploymentDetails;
+      financial_commitments: FinancialCommitments;
+    }>;
   };
   
   // Step 5: Portfolio

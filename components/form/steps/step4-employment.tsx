@@ -29,7 +29,10 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 interface Step4Props {
-  onNext: () => void;
+  onNext: (formData?: Step4FormData) => void;
+  applicantIndex?: number;
+  isMultiApplicant?: boolean;
+  hideNavigation?: boolean;
 }
 
 const employmentStatuses = [
@@ -41,44 +44,65 @@ const employmentStatuses = [
   { value: 'other', label: 'Other' },
 ] as const;
 
-export function Step4Employment({ onNext }: Step4Props) {
+export function Step4Employment({ 
+  onNext, 
+  applicantIndex = 0, 
+  isMultiApplicant = false,
+  hideNavigation = false 
+}: Step4Props) {
   const { step4, updateStep4 } = useFormStore();
+  
+  // Get current applicant data
+  const getCurrentApplicantData = () => {
+    if (applicantIndex === 0) {
+      return step4; // Primary applicant
+    } else {
+      const coApplicantIndex = applicantIndex - 1;
+      return step4.co_applicants?.[coApplicantIndex] || {
+        employment_status: '',
+        employment_details: {},
+        financial_commitments: {},
+      };
+    }
+  };
+
+  const currentData = getCurrentApplicantData();
 
   const form = useForm<Step4FormData>({
     resolver: zodResolver(step4Schema),
     mode: 'onSubmit',
     reValidateMode: 'onSubmit',
     defaultValues: {
-      employment_status: step4.employment_status || 'employed',
+      employment_status: currentData.employment_status || 'employed',
       // Employed fields
-      job_title: step4.employment_details?.job_title || '',
-      employer_name: step4.employment_details?.employer_name || '',
-      employer_address: step4.employment_details?.employer_address || '',
-      gross_annual_salary: step4.employment_details?.gross_annual_salary || 0,
-      net_monthly_income: step4.employment_details?.net_monthly_income || 0,
-      employment_start_date: step4.employment_details?.employment_start_date 
-        ? new Date(step4.employment_details.employment_start_date) 
+      job_title: currentData.employment_details?.job_title || '',
+      employer_name: currentData.employment_details?.employer_name || '',
+      employer_address: currentData.employment_details?.employer_address || '',
+      gross_annual_salary: currentData.employment_details?.gross_annual_salary || 0,
+      net_monthly_income: currentData.employment_details?.net_monthly_income || 0,
+      employment_start_date: currentData.employment_details?.employment_start_date 
+        ? new Date(currentData.employment_details.employment_start_date) 
         : undefined,
-      previous_employment_details: step4.employment_details?.previous_employment_details || '',
+      previous_employment_details: currentData.employment_details?.previous_employment_details || '',
       // Self-employed/Director fields
-      business_name: step4.employment_details?.business_name || '',
-      business_address: step4.employment_details?.business_address || '',
-      business_website: step4.employment_details?.business_website || '',
-      company_creation_date: step4.employment_details?.company_creation_date 
-        ? new Date(step4.employment_details.company_creation_date) 
+      business_name: currentData.employment_details?.business_name || '',
+      business_address: currentData.employment_details?.business_address || '',
+      business_website: currentData.employment_details?.business_website || '',
+      company_creation_date: currentData.employment_details?.company_creation_date 
+        ? new Date(currentData.employment_details.company_creation_date) 
         : undefined,
-      total_gross_annual_income: step4.employment_details?.total_gross_annual_income || 0,
-      net_annual_income: step4.employment_details?.net_annual_income || 0,
-      company_stake_percentage: step4.employment_details?.company_stake_percentage || 0,
-      bonus_overtime_commission_details: step4.employment_details?.bonus_overtime_commission_details || '',
-      accountant_can_provide_info: step4.employment_details?.accountant_can_provide_info || false,
-      accountant_contact_details: step4.employment_details?.accountant_contact_details || '',
+      total_gross_annual_income: currentData.employment_details?.total_gross_annual_income || 0,
+      net_annual_income: currentData.employment_details?.net_annual_income || 0,
+      company_stake_percentage: currentData.employment_details?.company_stake_percentage || 0,
+      bonus_overtime_commission_details: currentData.employment_details?.bonus_overtime_commission_details || '',
+      accountant_can_provide_info: currentData.employment_details?.accountant_can_provide_info || false,
+      accountant_contact_details: currentData.employment_details?.accountant_contact_details || '',
       // Financial commitments
-      personal_loans: step4.financial_commitments?.personal_loans || 0,
-      credit_card_debt: step4.financial_commitments?.credit_card_debt || 0,
-      car_loans_lease: step4.financial_commitments?.car_loans_lease || 0,
-      has_credit_or_legal_issues: step4.financial_commitments?.has_credit_or_legal_issues || false,
-      credit_legal_issues_details: step4.financial_commitments?.credit_legal_issues_details || '',
+      personal_loans: currentData.financial_commitments?.personal_loans || 0,
+      credit_card_debt: currentData.financial_commitments?.credit_card_debt || 0,
+      car_loans_lease: currentData.financial_commitments?.car_loans_lease || 0,
+      has_credit_or_legal_issues: currentData.financial_commitments?.has_credit_or_legal_issues || false,
+      credit_legal_issues_details: currentData.financial_commitments?.credit_legal_issues_details || '',
     },
   });
 
@@ -86,39 +110,44 @@ export function Step4Employment({ onNext }: Step4Props) {
   const watchedAccountantInfo = form.watch('accountant_can_provide_info');
 
   const onSubmit = async (data: Step4FormData) => {
-    // Transform the validated data back to the store format
-    const formData = {
-      employment_status: data.employment_status,
-      employment_details: {
-        job_title: data.job_title,
-        employer_name: data.employer_name,
-        employer_address: data.employer_address,
-        gross_annual_salary: data.gross_annual_salary,
-        net_monthly_income: data.net_monthly_income,
-        employment_start_date: data.employment_start_date,
-        previous_employment_details: data.previous_employment_details,
-        business_name: data.business_name,
-        business_address: data.business_address,
-        business_website: data.business_website,
-        company_creation_date: data.company_creation_date,
-        total_gross_annual_income: data.total_gross_annual_income,
-        net_annual_income: data.net_annual_income,
-        company_stake_percentage: data.company_stake_percentage,
-        bonus_overtime_commission_details: data.bonus_overtime_commission_details,
-        accountant_can_provide_info: data.accountant_can_provide_info,
-        accountant_contact_details: data.accountant_contact_details,
-      },
-      financial_commitments: {
-        personal_loans: data.personal_loans,
-        credit_card_debt: data.credit_card_debt,
-        car_loans_lease: data.car_loans_lease,
-        has_credit_or_legal_issues: data.has_credit_or_legal_issues,
-        credit_legal_issues_details: data.credit_legal_issues_details,
-      },
-    };
+    if (isMultiApplicant) {
+      // For multi-applicant mode, pass data to parent handler
+      onNext(data);
+    } else {
+      // For single applicant mode, transform and update store
+      const formData = {
+        employment_status: data.employment_status,
+        employment_details: {
+          job_title: data.job_title,
+          employer_name: data.employer_name,
+          employer_address: data.employer_address,
+          gross_annual_salary: data.gross_annual_salary,
+          net_monthly_income: data.net_monthly_income,
+          employment_start_date: data.employment_start_date,
+          previous_employment_details: data.previous_employment_details,
+          business_name: data.business_name,
+          business_address: data.business_address,
+          business_website: data.business_website,
+          company_creation_date: data.company_creation_date,
+          total_gross_annual_income: data.total_gross_annual_income,
+          net_annual_income: data.net_annual_income,
+          company_stake_percentage: data.company_stake_percentage,
+          bonus_overtime_commission_details: data.bonus_overtime_commission_details,
+          accountant_can_provide_info: data.accountant_can_provide_info,
+          accountant_contact_details: data.accountant_contact_details,
+        },
+        financial_commitments: {
+          personal_loans: data.personal_loans,
+          credit_card_debt: data.credit_card_debt,
+          car_loans_lease: data.car_loans_lease,
+          has_credit_or_legal_issues: data.has_credit_or_legal_issues,
+          credit_legal_issues_details: data.credit_legal_issues_details,
+        },
+      };
 
-    updateStep4(formData);
-    onNext();
+      updateStep4(formData);
+      onNext();
+    }
   };
 
   const onError = () => {
@@ -803,7 +832,7 @@ export function Step4Employment({ onNext }: Step4Props) {
             </CardContent>
           </Card>
 
-          <FormNavigation onNext={() => form.handleSubmit(onSubmit, onError)()} />
+          {!hideNavigation && <FormNavigation onNext={() => form.handleSubmit(onSubmit, onError)()} />}
         </div>
       </form>
     </Form>

@@ -47,6 +47,15 @@ export const step2Schema = z.object({
       marital_status: z.enum(['single', 'married', 'civil_partnership', 'divorced', 'widowed']),
     })
   ).optional(),
+}).refine((data) => {
+  // If has_co_applicants is true, require at least one co-applicant
+  if (data.has_co_applicants) {
+    return data.co_applicants && data.co_applicants.length > 0;
+  }
+  return true;
+}, {
+  message: "Please add at least one co-applicant or select 'No, just me'",
+  path: ["co_applicants"], // This will show error on co_applicants field
 });
 
 // Step 3: Your Home

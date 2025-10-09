@@ -6,8 +6,8 @@ import { FormProgress } from './form-progress';
 import { FormNavigation } from './form-navigation';
 import { Step1LeadCapture } from './steps/step1-lead-capture';
 import { Step2AboutYou } from './steps/step2-about-you';
-import { Step3HomeFinancial } from './steps/step3-home-financial';
-import { Step4Employment } from './steps/step4-employment';
+import { Step3MultiApplicant } from './steps/step3-multi-applicant';
+import { Step4MultiApplicant } from './steps/step4-multi-applicant';
 import { Step5Portfolio } from './steps/step5-portfolio';
 import { Step6SpanishProperty } from './steps/step6-spanish-property';
 import { useEffect } from 'react';
@@ -37,9 +37,9 @@ export function MultiStepForm() {
       case 2:
         return <Step2AboutYou onNext={handleNext} />;
       case 3:
-        return <Step3HomeFinancial onNext={handleNext} />;
+        return <Step3MultiApplicant onNext={handleNext} />;
       case 4:
-        return <Step4Employment onNext={handleNext} />;
+        return <Step4MultiApplicant onNext={handleNext} />;
       case 5:
         return <Step5Portfolio onNext={handleNext} />;
       case 6:
