@@ -35,23 +35,74 @@ async function getStageIdByName(stageName: string): Promise<string | null> {
 }
 
 /**
- * Create initial contact and opportunity when Step 1 is completed
+ * Create or update contact and opportunity when Step 1 is completed
+ * Searches for existing contact by email first, then creates or updates
  */
-export async function createLeadInGHL(data: Step1FormData): Promise<{ contactId: string; opportunityId: string | null } | null> {
-  const contact: GHLContact = {
-    firstName: data.first_name,
-    lastName: data.last_name,
-    email: data.email,
-    phone: data.mobile,
-    dateOfBirth: data.date_of_birth ? format(data.date_of_birth, 'yyyy-MM-dd') : undefined,
-    tags: ['AIP-Application-Started', 'Lead-Source-Website'],
-    source: 'AIP Fact Find Form',
-  };
-
-  const result = await ghlClient.createContact(contact);
+export async function createLeadInGHL(data: Step1FormData): Promise<{ 
+  contactId: string; 
+  opportunityId: string | null; 
+  isExisting: boolean;
+  existingData?: {
+    first_name: string;
+    last_name: string;
+    email: string;
+    mobile: string;
+    date_of_birth?: string; // yyyy-MM-dd format
+  }
+} | null> {
+  // First, check if contact exists by email
+  const searchResult = await ghlClient.searchContactByEmail(data.email);
   
-  if (result) {
-    const contactId = result.contact.id;
+  let contactId: string | null = null;
+  let isExisting = false;
+  let existingData = undefined;
+
+  if (searchResult && searchResult.contacts && searchResult.contacts.length > 0) {
+    // Contact exists - update it
+    const existingContact = searchResult.contacts[0];
+    contactId = existingContact.id;
+    isExisting = true;
+
+    console.log('✅ Contact already exists:', contactId);
+
+    // Extract existing data for form prefill
+    existingData = {
+      first_name: existingContact.firstName || '',
+      last_name: existingContact.lastName || '',
+      email: existingContact.email || '',
+      mobile: existingContact.phone || '',
+      date_of_birth: existingContact.dateOfBirth, // Already in yyyy-MM-dd format
+    };
+
+    // Update contact with new data
+    await ghlClient.updateContact(contactId, {
+      tags: ['AIP-Application-Started', 'Lead-Source-Website'],
+      source: 'AIP Fact Find Form',
+    });
+
+    // TODO: You could also update other fields like name, phone, DOB if they've changed
+    // For now, we just add tags to indicate they started a new application
+  } else {
+    // Contact doesn't exist - create new one
+    const contact: GHLContact = {
+      firstName: data.first_name,
+      lastName: data.last_name,
+      email: data.email,
+      phone: data.mobile,
+      dateOfBirth: data.date_of_birth ? format(data.date_of_birth, 'yyyy-MM-dd') : undefined,
+      tags: ['AIP-Application-Started', 'Lead-Source-Website'],
+      source: 'AIP Fact Find Form',
+    };
+
+    const result = await ghlClient.createContact(contact);
+    
+    if (result) {
+      contactId = result.contact.id;
+      console.log('✅ New contact created:', contactId);
+    }
+  }
+
+  if (contactId) {
     let opportunityId: string | null = null;
 
     // Create opportunity in "New Lead" stage
@@ -72,7 +123,7 @@ export async function createLeadInGHL(data: Step1FormData): Promise<{ contactId:
       }
     }
 
-    return { contactId, opportunityId };
+    return { contactId, opportunityId, isExisting, existingData };
   }
   
   return null;

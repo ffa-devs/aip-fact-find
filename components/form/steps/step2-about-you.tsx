@@ -13,29 +13,21 @@ import {
   FormMessage,
   FormDescription,
 } from '@/components/ui/form';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { PhoneNumberInput } from '@/components/ui/phone-input';
-import { X } from 'lucide-react';
-import { useState } from 'react';
+import { NationalityCombobox } from '@/components/ui/nationality-combobox';
+import { CoApplicantModal } from '@/components/ui/co-applicant-modal';
+import { FormNavigation } from '@/components/form/form-navigation';
+import { Edit, Trash2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
+import { parsePhoneNumber } from 'react-phone-number-input';
 
 interface Step2Props {
   onNext: () => void;
 }
-
-const countries = [
-  'Spain', 'United Kingdom', 'France', 'Germany', 'Italy', 'Portugal', 
-  'Netherlands', 'Belgium', 'Ireland', 'Other'
-];
 
 const maritalStatuses = [
   { value: 'single', label: 'Single' },
@@ -46,21 +38,35 @@ const maritalStatuses = [
 ];
 
 export function Step2AboutYou({ onNext }: Step2Props) {
-  const { step2, updateStep2 } = useFormStore();
+  const { step1, step2, updateStep2 } = useFormStore();
   const [showCoApplicant, setShowCoApplicant] = useState(step2.has_co_applicants);
 
   const form = useForm<Step2FormData>({
     resolver: zodResolver(step2Schema),
-    mode: 'onBlur', // Validate on blur
-    reValidateMode: 'onChange', // Re-validate on change after first validation
+    mode: 'onSubmit', // Only validate on submit
+    reValidateMode: 'onSubmit', // Only re-validate on submit
     defaultValues: {
-      nationality: step2.nationality,
+      nationality: step2.nationality || '',
       marital_status: step2.marital_status || undefined,
-      telephone: step2.telephone,
+      telephone: step2.telephone || '',
       has_co_applicants: step2.has_co_applicants,
-      co_applicants: step2.co_applicants,
+      co_applicants: step2.co_applicants || [],
     },
   });
+
+  // Auto-detect nationality from Step 1 phone number
+  useEffect(() => {
+    if (step1.mobile && !step2.nationality) {
+      try {
+        const phoneNumber = parsePhoneNumber(step1.mobile);
+        if (phoneNumber?.country) {
+          form.setValue('nationality', phoneNumber.country);
+        }
+      } catch {
+        // Invalid phone number, ignore
+      }
+    }
+  }, [step1.mobile, step2.nationality, form]);
 
   const onSubmit = async (data: Step2FormData) => {
     // Transform co_applicants to match Applicant type if needed
@@ -108,20 +114,16 @@ export function Step2AboutYou({ onNext }: Step2Props) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Nationality *</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select your nationality" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {countries.map((country) => (
-                      <SelectItem key={country} value={country.toLowerCase()}>
-                        {country}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <FormControl>
+                  <NationalityCombobox
+                    value={field.value}
+                    onChange={field.onChange}
+                    placeholder="Select your nationality"
+                  />
+                </FormControl>
+                <FormDescription>
+                  {field.value && 'You can change this if needed'}
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -193,6 +195,11 @@ export function Step2AboutYou({ onNext }: Step2Props) {
                         const boolValue = value === 'true';
                         field.onChange(boolValue);
                         setShowCoApplicant(boolValue);
+                        
+                        // Clear co-applicants if "No, just me" is selected
+                        if (!boolValue) {
+                          form.setValue('co_applicants', []);
+                        }
                       }}
                       defaultValue={field.value ? 'true' : 'false'}
                       className="flex gap-4"
@@ -223,31 +230,67 @@ export function Step2AboutYou({ onNext }: Step2Props) {
 
           {showCoApplicant && (
             <Card>
-              <CardContent className="pt-6">
+              <CardContent>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold">Co-Applicant Details</h3>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setShowCoApplicant(false);
-                        form.setValue('has_co_applicants', false);
+                    <h4 className="text-md font-semibold">Co-Applicant Details</h4>
+                    <CoApplicantModal
+                      onSave={(newCoApplicant) => {
+                        const currentCoApplicants = form.getValues('co_applicants') || [];
+                        form.setValue('co_applicants', [...currentCoApplicants, newCoApplicant]);
                       }}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
+                    />
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    Coming soon: Add co-applicant functionality
-                  </p>
-                  {/* TODO: Implement dynamic co-applicant fields */}
+                  
+                  {/* Co-Applicants List */}
+                  <div className="space-y-3">
+                    {form.watch('co_applicants')?.map((coApplicant, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div>
+                          <p className="font-medium">
+                            {coApplicant.first_name} {coApplicant.last_name}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {coApplicant.email} • {coApplicant.nationality}
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <CoApplicantModal
+                            editingCoApplicant={{ ...coApplicant, index }}
+                            onSave={(updatedCoApplicant) => {
+                              const currentCoApplicants = form.getValues('co_applicants') || [];
+                              const updatedCoApplicants = [...currentCoApplicants];
+                              updatedCoApplicants[index] = updatedCoApplicant;
+                              form.setValue('co_applicants', updatedCoApplicants);
+                            }}
+                            trigger={
+                              <Button variant="ghost" size="sm">
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                            }
+                          />
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              const currentCoApplicants = form.getValues('co_applicants') || [];
+                              const updatedCoApplicants = currentCoApplicants.filter((_, i) => i !== index);
+                              form.setValue('co_applicants', updatedCoApplicants);
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </CardContent>
             </Card>
           )}
         </div>
+
+        <FormNavigation showSaveForLater={true} />
       </form>
     </Form>
   );

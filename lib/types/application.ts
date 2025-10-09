@@ -2,17 +2,17 @@
 
 export type ApplicationStatus = 'draft' | 'in_review' | 'approved' | 'rejected' | 'incomplete';
 
-export type EmploymentStatus = 'employed' | 'self_employed' | 'director' | 'retired' | 'unemployed' | 'other';
+export type EmploymentStatus = 'employed' | 'self_employed' | 'director' | 'retired_pension' | 'home_maker' | 'other';
 
 export type MaritalStatus = 'single' | 'married' | 'civil_partnership' | 'divorced' | 'widowed';
 
 export type HomeownerStatus = 'homeowner' | 'tenant';
 
-export type PropertyType = 'villa' | 'apartment' | 'townhouse' | 'land' | 'commercial' | 'other';
+export type PropertyType = 'urban' | 'rustic' | 'commercial';
 
-export type HomeStatus = 'primary_residence' | 'second_home' | 'investment';
+export type HomeStatus = 'main_residence' | 'holiday_home' | 'investment' | 'other';
 
-export type UrgencyLevel = 'low' | 'medium' | 'high' | 'very_high';
+export type UrgencyLevel = 'urgent' | 'pre_approval' | 'general_info' | 'other';
 
 export interface Applicant {
   id?: string;
@@ -45,7 +45,7 @@ export interface Applicant {
 export interface Child {
   id?: string;
   applicant_id?: string;
-  age: number;
+  date_of_birth: Date;
 }
 
 export interface EmploymentDetails {
@@ -57,8 +57,7 @@ export interface EmploymentDetails {
   employer_address?: string;
   gross_annual_salary?: number;
   net_monthly_income?: number;
-  employment_length_years?: number;
-  employment_length_months?: number;
+  employment_start_date?: Date;
   previous_employment_details?: string;
   // For Self-Employed/Directors
   business_name?: string;
@@ -144,17 +143,18 @@ export interface FormState {
   // Step 3: Your Home
   step3: {
     current_address: string;
-    time_at_address_years: number;
-    time_at_address_months: number;
+    move_in_date: Date | null;
     homeowner_or_tenant: HomeownerStatus | '';
     monthly_mortgage_or_rent: number;
+    monthly_payment_currency: string;
     current_property_value: number;
+    property_value_currency: string;
     mortgage_outstanding: number;
+    mortgage_outstanding_currency: string;
     lender_or_landlord_details: string;
-    lived_less_than_3_years: boolean;
     previous_address: string;
-    time_at_previous_years: number;
-    time_at_previous_months: number;
+    previous_move_in_date: Date | null;
+    previous_move_out_date: Date | null;
     tax_country: string;
     has_children: boolean;
     children: Child[];
@@ -176,15 +176,16 @@ export interface FormState {
   
   // Step 6: Spanish Property
   step6: {
+    urgency_level: UrgencyLevel | '';
     purchase_price: number;
     deposit_available: number;
     property_address: string;
-    property_type: PropertyType | '';
     home_status: HomeStatus | '';
-    urgency_level: UrgencyLevel | '';
+    property_type: PropertyType | '';
     real_estate_agent_contact: string;
     lawyer_contact: string;
-    additional_notes: string;
+    additional_information: string;
+    authorization_consent: boolean;
   };
   
   // Meta

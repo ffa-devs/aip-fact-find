@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     // Validate the request body with step 1 schema
     const validatedData = step1Schema.parse(body);
 
-    // Create contact and opportunity in GHL
+    // Create contact and opportunity in GHL (or get existing contact)
     const result = await createLeadInGHL(validatedData);
 
     if (!result) {
@@ -30,7 +30,11 @@ export async function POST(request: Request) {
       success: true,
       contactId: result.contactId,
       opportunityId: result.opportunityId,
-      message: 'Lead created successfully in GHL',
+      isExisting: result.isExisting,
+      existingData: result.existingData || null,
+      message: result.isExisting 
+        ? 'Existing contact found and updated' 
+        : 'Lead created successfully in GHL',
     });
   } catch (error) {
     console.error('Create lead error:', error);

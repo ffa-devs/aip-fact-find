@@ -6,11 +6,14 @@ import { FormProgress } from './form-progress';
 import { FormNavigation } from './form-navigation';
 import { Step1LeadCapture } from './steps/step1-lead-capture';
 import { Step2AboutYou } from './steps/step2-about-you';
-import { toast } from 'sonner';
+import { Step3HomeFinancial } from './steps/step3-home-financial';
+import { Step4Employment } from './steps/step4-employment';
+import { Step5Portfolio } from './steps/step5-portfolio';
+import { Step6SpanishProperty } from './steps/step6-spanish-property';
 import { useEffect } from 'react';
 
 export function MultiStepForm() {
-  const { currentStep, nextStep, previousStep } = useFormStore();
+  const { currentStep, nextStep } = useFormStore();
 
   // Auto-save functionality
   useEffect(() => {
@@ -27,18 +30,6 @@ export function MultiStepForm() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleBack = () => {
-    previousStep();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleSaveForLater = () => {
-    // TODO: Implement save for later functionality
-    toast.success('Progress Saved', {
-      description: 'Your application has been saved. You can continue later.',
-    });
-  };
-
   const renderStep = () => {
     switch (currentStep) {
       case 1:
@@ -46,33 +37,13 @@ export function MultiStepForm() {
       case 2:
         return <Step2AboutYou onNext={handleNext} />;
       case 3:
-        return (
-          <div className="space-y-4">
-            <h2 className="text-2xl font-bold">Your Home & Financial Position</h2>
-            <p className="text-muted-foreground">Step 3 - Coming soon</p>
-          </div>
-        );
+        return <Step3HomeFinancial onNext={handleNext} />;
       case 4:
-        return (
-          <div className="space-y-4">
-            <h2 className="text-2xl font-bold">Employment & Income</h2>
-            <p className="text-muted-foreground">Step 4 - Coming soon</p>
-          </div>
-        );
+        return <Step4Employment onNext={handleNext} />;
       case 5:
-        return (
-          <div className="space-y-4">
-            <h2 className="text-2xl font-bold">Property Portfolio & Assets</h2>
-            <p className="text-muted-foreground">Step 5 - Coming soon</p>
-          </div>
-        );
+        return <Step5Portfolio onNext={handleNext} />;
       case 6:
-        return (
-          <div className="space-y-4">
-            <h2 className="text-2xl font-bold">Spanish Property & Submission</h2>
-            <p className="text-muted-foreground">Step 6 - Coming soon</p>
-          </div>
-        );
+        return <Step6SpanishProperty onNext={handleNext} />;
       default:
         return null;
     }
@@ -97,12 +68,11 @@ export function MultiStepForm() {
           <CardContent className="space-y-6">
             {renderStep()}
             
-            <FormNavigation
-              onBack={handleBack}
-              onNext={currentStep > 2 ? handleNext : undefined}
-              onSave={handleSaveForLater}
-              isLastStep={currentStep === 6}
-            />
+            {/* FormNavigation is now inside each step component (Step1, Step2, Step3, Step4, Step5, Step6, etc.) */}
+            {/* For placeholder steps 7+, show basic navigation */}
+            {currentStep > 6 && (
+              <FormNavigation showSaveForLater={true} />
+            )}
           </CardContent>
         </Card>
 

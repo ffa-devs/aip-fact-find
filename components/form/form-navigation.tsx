@@ -2,67 +2,77 @@
 
 import { Button } from '@/components/ui/button';
 import { useFormStore } from '@/lib/store/form-store';
-import { ArrowLeft, ArrowRight, Save } from 'lucide-react';
+import { Loader2, ArrowLeft } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface FormNavigationProps {
-  onBack?: () => void;
   onNext?: () => void;
-  onSave?: () => void;
-  isNextDisabled?: boolean;
-  isLastStep?: boolean;
-  nextLabel?: string;
+  isSubmitting?: boolean;
+  showSaveForLater?: boolean;
+  showBack?: boolean;
 }
 
 export function FormNavigation({
-  onBack,
   onNext,
-  onSave,
-  isNextDisabled = false,
-  isLastStep = false,
-  nextLabel,
+  isSubmitting = false,
+  showSaveForLater = true,
+  showBack = true,
 }: FormNavigationProps) {
-  const currentStep = useFormStore((state) => state.currentStep);
+  const { currentStep, previousStep } = useFormStore();
+
+  const handleBack = () => {
+    previousStep();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleSaveForLater = () => {
+    // Data is already saved in Zustand store automatically
+    toast.success('Progress saved!', {
+      description: 'You can continue your application later',
+    });
+    // Optional: redirect or close
+    setTimeout(() => {
+      window.location.href = '/';
+    }, 1000);
+  };
 
   return (
-    <div className="flex items-center justify-between pt-6 border-t">
-      <div>
-        {currentStep > 1 && (
+    <div className="flex justify-between items-center pt-4 border-t">
+      <div className="flex gap-3">
+        {showBack && currentStep > 1 && (
           <Button
             type="button"
             variant="outline"
-            onClick={onBack}
-            className="gap-2"
+            onClick={handleBack}
+            disabled={isSubmitting}
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="mr-2 h-4 w-4" />
             Back
           </Button>
         )}
       </div>
 
       <div className="flex gap-3">
-        {currentStep > 1 && (
+        {showSaveForLater && (
           <Button
             type="button"
             variant="ghost"
-            onClick={onSave}
-            className="gap-2"
+            onClick={handleSaveForLater}
+            disabled={isSubmitting}
           >
-            <Save className="w-4 h-4" />
             Save for Later
           </Button>
         )}
-
-        {onNext && (
-          <Button
-            type="submit"
-            onClick={onNext}
-            disabled={isNextDisabled}
-            className="gap-2"
-          >
-            {nextLabel || (isLastStep ? 'Submit Application' : 'Continue')}
-            {!isLastStep && <ArrowRight className="w-4 h-4" />}
-          </Button>
-        )}
+        
+        <Button 
+          type="submit" 
+          size="lg" 
+          disabled={isSubmitting}
+          onClick={onNext}
+        >
+          {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          {isSubmitting ? 'Saving...' : currentStep === 6 ? 'Submit Application' : 'Continue'}
+        </Button>
       </div>
     </div>
   );

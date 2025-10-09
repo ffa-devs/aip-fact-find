@@ -34,6 +34,20 @@ export interface GHLContactResponse {
   };
 }
 
+export interface GHLContactSearchResponse {
+  contacts: Array<{
+    id: string;
+    locationId: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    tags: string[];
+    dateOfBirth?: string;
+  }>;
+  total: number;
+}
+
 export interface GHLUpdateData {
   tags?: string[];
   // customFields?: Array<{ id: string; key: string; field_value: string | number | boolean }>; // TODO: Map custom fields in settings
@@ -102,6 +116,45 @@ class GoHighLevelClient {
       'Content-Type': 'application/json',
       'Version': GHL_API_VERSION,
     };
+  }
+
+  /**
+   * Search for a contact by email
+   */
+  async searchContactByEmail(email: string): Promise<GHLContactSearchResponse | null> {
+    try {
+      const headers = await this.getAuthHeaders();
+      const locationId = this.locationId || await getDefaultLocationId();
+
+      const response = await fetch(`${GHL_API_BASE}/contacts/search`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          locationId,
+          pageLimit: 1,
+          filters: [
+            {
+              field: 'email',
+              operator: 'eq',
+              value: email,
+            },
+          ],
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        console.error('GHL Search Error:', error);
+        return null;
+      }
+
+      const result = await response.json();
+      console.log('🔍 Contact search result:', result);
+      return result;
+    } catch (error) {
+      console.error('Failed to search GHL contact:', error);
+      return null;
+    }
   }
 
   /**

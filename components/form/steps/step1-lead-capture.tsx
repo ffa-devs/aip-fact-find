@@ -17,7 +17,8 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { PhoneNumberInput } from '@/components/ui/phone-input';
-import { CalendarIcon, Loader2 } from 'lucide-react';
+import { FormNavigation } from '@/components/form/form-navigation';
+import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -49,7 +50,9 @@ export function Step1LeadCapture({ onNext }: Step1Props) {
     defaultValues: {
       first_name: step1.first_name,
       last_name: step1.last_name,
-      date_of_birth: step1.date_of_birth || undefined,
+      date_of_birth: step1.date_of_birth 
+        ? (step1.date_of_birth instanceof Date ? step1.date_of_birth : new Date(step1.date_of_birth))
+        : undefined,
       email: step1.email,
       mobile: step1.mobile,
     },
@@ -77,9 +80,38 @@ export function Step1LeadCapture({ onNext }: Step1Props) {
             if (result.opportunityId) {
               setGhlOpportunityId(result.opportunityId);
             }
-            toast.success('Lead created successfully!', {
-              description: 'Your information has been saved',
-            });
+
+            // If existing contact was found, prefill the form with their data
+            if (result.isExisting && result.existingData) {
+              const existingData = result.existingData;
+              
+              // Update form fields with existing data
+              if (existingData.first_name) {
+                form.setValue('first_name', existingData.first_name);
+                updateStep1({ ...data, first_name: existingData.first_name });
+              }
+              if (existingData.last_name) {
+                form.setValue('last_name', existingData.last_name);
+                updateStep1({ ...data, last_name: existingData.last_name });
+              }
+              if (existingData.mobile) {
+                form.setValue('mobile', existingData.mobile);
+                updateStep1({ ...data, mobile: existingData.mobile });
+              }
+              if (existingData.date_of_birth) {
+                const dob = new Date(existingData.date_of_birth);
+                form.setValue('date_of_birth', dob);
+                updateStep1({ ...data, date_of_birth: dob });
+              }
+
+              toast.success('Existing contact found!', {
+                description: 'We\'ve populated your details from our records',
+              });
+            } else {
+              toast.success('Lead created successfully!', {
+                description: 'Your information has been saved',
+              });
+            }
           } else {
             console.error('Failed to create GHL contact:', result.error);
             toast.error('Note: Could not sync with CRM', {
@@ -116,11 +148,19 @@ export function Step1LeadCapture({ onNext }: Step1Props) {
     }, 100);
   };
 
-  const calculateAge = (date: Date) => {
+  const calculateAge = (date: Date | string | null | undefined) => {
+    if (!date) return 0;
+    
+    // Convert to Date if it's a string
+    const dateObj = date instanceof Date ? date : new Date(date);
+    
+    // Check if valid date
+    if (isNaN(dateObj.getTime())) return 0;
+    
     const today = new Date();
-    let age = today.getFullYear() - date.getFullYear();
-    const monthDiff = today.getMonth() - date.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < date.getDate())) {
+    let age = today.getFullYear() - dateObj.getFullYear();
+    const monthDiff = today.getMonth() - dateObj.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dateObj.getDate())) {
       age--;
     }
     return age;
@@ -251,12 +291,11 @@ export function Step1LeadCapture({ onNext }: Step1Props) {
           />
         </div>
 
-        <div className="flex justify-end pt-4 border-t">
-          <Button type="submit" size="lg" disabled={isSubmitting}>
-            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isSubmitting ? 'Creating Lead...' : 'Continue'}
-          </Button>
-        </div>
+        <FormNavigation 
+          isSubmitting={isSubmitting} 
+          showSaveForLater={false}
+          showBack={false}
+        />
       </form>
     </Form>
   );
