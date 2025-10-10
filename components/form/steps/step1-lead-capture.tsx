@@ -17,7 +17,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { PhoneNumberInput } from '@/components/ui/phone-input';
-import { FormNavigation } from '@/components/form/form-navigation';
+
 import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -172,12 +172,6 @@ export function Step1LeadCapture({ onNext }: Step1Props) {
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit, onError)} className="space-y-6">
         <div className="space-y-4">
-          <div>
-            <h2 className="text-2xl font-bold">Let&apos;s Get Started</h2>
-            <p className="text-muted-foreground mt-1">
-              Just a few quick details to begin your application
-            </p>
-          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
@@ -291,11 +285,25 @@ export function Step1LeadCapture({ onNext }: Step1Props) {
           />
         </div>
 
-        <FormNavigation 
-          isSubmitting={isSubmitting} 
-          showSaveForLater={false}
-          showBack={false}
-        />
+        {/* Disclaimer */}
+        <div className="pt-4 pb-2">
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+            <p className="text-sm text-gray-700 leading-relaxed">
+              We treat your details and information with respect. The data provided will be kept as long as the commercial relationship is maintained or during the years necessary to comply with the legal obligations. The information you provide us with will not be transferred to any third parties without your knowledge or consent in accordance with EU GDPR regulations and LCCI Spanish mortgages laws. Fluent Finance Abroad are Bank of Spain registered mortgage intermediaries with licence number D305.
+            </p>
+          </div>
+        </div>
+
+        <div className="pt-6">
+          <Button 
+            type="submit" 
+            disabled={isSubmitting}
+            className="w-full text-white px-8 py-3 text-base hover:opacity-90 transition-opacity"
+            style={{ backgroundColor: '#234c8a' }}
+          >
+            {isSubmitting ? 'Processing...' : 'I Agree and Next'}
+          </Button>
+        </div>
       </form>
     </Form>
   );

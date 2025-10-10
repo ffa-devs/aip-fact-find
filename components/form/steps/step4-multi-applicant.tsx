@@ -1,21 +1,52 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useFormStore } from '@/lib/store/form-store';
-import { ApplicantSelector } from '@/components/form/applicant-selector';
 import { Step4Employment } from './step4-employment';
-import { Card, CardContent } from '@/components/ui/card';
 import { Step4FormData } from '@/lib/validations/form-schemas';
 import { Button } from '@/components/ui/button';
-import { CheckCircle2 } from 'lucide-react';
+import { User, Users } from 'lucide-react';
+import { useApplicantSelector } from '@/hooks/use-applicant-selector';
 
 interface Step4MultiApplicantProps {
   onNext: () => void;
 }
 
 export function Step4MultiApplicant({ onNext }: Step4MultiApplicantProps) {
-  const { step2, step4, updateStep4 } = useFormStore();
-  const [selectedApplicantIndex, setSelectedApplicantIndex] = useState(0);
+  const { step2, step4, updateStep4, previousStep } = useFormStore();
+  const selectedApplicantIndex = useApplicantSelector();
+  const hasResetRef = useRef(false);
+
+  // Reset to primary applicant when Step 4 first loads
+  if (!hasResetRef.current) {
+    hasResetRef.current = true;
+    if (selectedApplicantIndex !== 0) {
+      window.dispatchEvent(new CustomEvent('applicantChange', { 
+        detail: { index: 0 } 
+      }));
+    }
+  }
+
+  // Get all applicants (primary + co-applicants)
+  const getAllApplicants = () => {
+    const applicants = [{ name: 'Primary Applicant', isPrimary: true }];
+    if (step2.has_co_applicants && step2.co_applicants) {
+      step2.co_applicants.forEach((coApp) => {
+        applicants.push({
+          name: `${coApp.first_name} ${coApp.last_name}`,
+          isPrimary: false
+        });
+      });
+    }
+    return applicants;
+  };
+
+  // Function to trigger applicant change
+  const setSelectedApplicantIndex = (index: number) => {
+    window.dispatchEvent(new CustomEvent('applicantChange', { 
+      detail: { index } 
+    }));
+  };
 
   // Ensure co_applicants array has the right length
   useEffect(() => {
@@ -37,28 +68,7 @@ export function Step4MultiApplicant({ onNext }: Step4MultiApplicantProps) {
     }
   }, [step2.co_applicants.length, step2.has_co_applicants, step4.co_applicants, updateStep4]);
 
-  // Get completion status for each applicant
-  const getCompletionStatus = () => {
-    const statuses = [];
-    
-    // Primary applicant
-    const primaryComplete = !!(
-      step4.employment_status
-    );
-    statuses.push(primaryComplete);
-    
-    // Co-applicants
-    if (step2.has_co_applicants && step4.co_applicants) {
-      step4.co_applicants.forEach(coApplicant => {
-        const complete = !!(
-          coApplicant.employment_status
-        );
-        statuses.push(complete);
-      });
-    }
-    
-    return statuses;
-  };
+
 
   // Handle form completion for current applicant
   const handleApplicantFormNext = (formData?: Step4FormData) => {
@@ -133,13 +143,28 @@ export function Step4MultiApplicant({ onNext }: Step4MultiApplicantProps) {
     }
   };
 
-  // Check if all applicants are complete
-  const allComplete = getCompletionStatus().every(status => status);
-
-  // Handle final next (when all applicants are complete)
-  const handleFinalNext = () => {
-    if (allComplete) {
+  const handleContinue = () => {
+    const allApplicants = getAllApplicants();
+    
+    if (selectedApplicantIndex < allApplicants.length - 1) {
+      // Go to next applicant
+      setSelectedApplicantIndex(selectedApplicantIndex + 1);
+    } else {
+      // Last applicant, go to next step
       onNext();
+    }
+  };
+
+  const handleBack = () => {
+    if (selectedApplicantIndex > 0) {
+      // Go to previous applicant
+      setSelectedApplicantIndex(selectedApplicantIndex - 1);
+      window.dispatchEvent(new CustomEvent('applicantChange', { 
+        detail: { index: selectedApplicantIndex - 1 } 
+      }));
+    } else {
+      // First applicant, go to previous step
+      previousStep();
     }
   };
 
@@ -148,39 +173,71 @@ export function Step4MultiApplicant({ onNext }: Step4MultiApplicantProps) {
     return <Step4Employment onNext={onNext} />;
   }
 
-  return (
-    <div className="space-y-6">
-      <ApplicantSelector
-        currentApplicantIndex={selectedApplicantIndex}
-        onApplicantChange={setSelectedApplicantIndex}
-        completionStatus={getCompletionStatus()}
-        showProgress={true}
-      />
+  const allApplicants = getAllApplicants();
+  const currentApplicant = allApplicants[selectedApplicantIndex];
+  const isLastApplicant = selectedApplicantIndex === allApplicants.length - 1;
 
+  return (
+    <div className="space-y-8">
+      {/* Current Applicant Header */}
+      <div className="bg-white p-4 rounded-lg border border-gray-200">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              {currentApplicant.isPrimary ? (
+                <User className="w-5 h-5" style={{ color: '#234c8a' }} />
+              ) : (
+                <Users className="w-5 h-5" style={{ color: '#234c8a' }} />
+              )}
+              <span className="font-semibold text-lg">
+                {currentApplicant.name}
+              </span>
+            </div>
+          </div>
+          <div className="text-sm text-gray-500">
+            {selectedApplicantIndex + 1} of {allApplicants.length}
+          </div>
+        </div>
+      </div>
+
+      {/* Current Applicant Form */}
       <Step4Employment
-        key={selectedApplicantIndex} // Force re-render when applicant changes
+        key={`step4-${selectedApplicantIndex}`}
         onNext={handleApplicantFormNext}
         applicantIndex={selectedApplicantIndex}
         isMultiApplicant={true}
         hideNavigation={true}
       />
 
-      {/* Final Navigation - only show when all complete */}
-      {allComplete && (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-green-600">
-                <CheckCircle2 className="w-5 h-5" />
-                <span className="font-medium">All applicants completed!</span>
-              </div>
-              <Button onClick={handleFinalNext} size="lg">
-                Continue to Property Portfolio
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Navigation */}
+      <div className="flex justify-between pt-6">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={handleBack}
+          className="px-8 py-3"
+        >
+          Back
+        </Button>
+        
+        <div className="flex gap-4">
+          <Button
+            type="button"
+            variant="outline"
+            className="px-8 py-3"
+          >
+            Save for Later
+          </Button>
+          
+          <Button
+            onClick={handleContinue}
+            className="px-8 py-3 text-white"
+            style={{ backgroundColor: '#234c8a' }}
+          >
+            {isLastApplicant ? 'Next Step' : 'Continue'}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

@@ -19,7 +19,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { PhoneNumberInput } from '@/components/ui/phone-input';
 import { NationalityCombobox } from '@/components/ui/nationality-combobox';
 import { CoApplicantModal } from '@/components/ui/co-applicant-modal';
-import { FormNavigation } from '@/components/form/form-navigation';
+
 import { Edit, Trash2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
@@ -42,7 +42,21 @@ export function Step2AboutYou({ onNext }: Step2Props) {
   const [showCoApplicant, setShowCoApplicant] = useState(step2.has_co_applicants);
 
   const form = useForm<Step2FormData>({
-    resolver: zodResolver(step2Schema),
+    resolver: async (values, context, options) => {
+      // Convert date fields in co_applicants to Date objects if they're strings
+      const processedValues = {
+        ...values,
+        co_applicants: values.co_applicants?.map(coApp => ({
+          ...coApp,
+          date_of_birth: coApp.date_of_birth instanceof Date 
+            ? coApp.date_of_birth 
+            : typeof coApp.date_of_birth === 'string'
+            ? new Date(coApp.date_of_birth)
+            : coApp.date_of_birth,
+        })) || [],
+      };
+      return zodResolver(step2Schema)(processedValues, context, options);
+    },
     mode: 'onBlur', // Validate on blur for better UX
     reValidateMode: 'onChange', // Re-validate on change
     defaultValues: {
@@ -50,7 +64,14 @@ export function Step2AboutYou({ onNext }: Step2Props) {
       marital_status: step2.marital_status || undefined,
       telephone: step2.telephone || '',
       has_co_applicants: step2.has_co_applicants,
-      co_applicants: step2.co_applicants || [],
+      co_applicants: step2.co_applicants?.map(coApp => ({
+        ...coApp,
+        date_of_birth: coApp.date_of_birth instanceof Date 
+          ? coApp.date_of_birth 
+          : typeof coApp.date_of_birth === 'string' 
+          ? new Date(coApp.date_of_birth)
+          : coApp.date_of_birth,
+      })) || [],
     },
   });
 
@@ -67,6 +88,28 @@ export function Step2AboutYou({ onNext }: Step2Props) {
       }
     }
   }, [step1.mobile, step2.nationality, form]);
+
+  // Sync form with store data on mount (fixes reload issues)
+  useEffect(() => {
+    if (step2.co_applicants && step2.co_applicants.length > 0) {
+      const processedCoApplicants = step2.co_applicants.map(coApp => ({
+        first_name: coApp.first_name,
+        last_name: coApp.last_name,
+        email: coApp.email,
+        mobile: coApp.mobile,
+        date_of_birth: coApp.date_of_birth instanceof Date 
+          ? coApp.date_of_birth 
+          : typeof coApp.date_of_birth === 'string' 
+          ? new Date(coApp.date_of_birth)
+          : coApp.date_of_birth,
+        nationality: coApp.nationality || '',
+        marital_status: coApp.marital_status || 'single',
+      }));
+      
+      form.setValue('co_applicants', processedCoApplicants);
+      form.setValue('has_co_applicants', step2.has_co_applicants);
+    }
+  }, [step2.co_applicants, step2.has_co_applicants, form]);
 
   const onSubmit = async (data: Step2FormData) => {
     console.log('Step 2 Form Data:', data);
@@ -87,6 +130,8 @@ export function Step2AboutYou({ onNext }: Step2Props) {
 
   const onError = (errors: FieldErrors<Step2FormData>) => {
     console.log('Step 2 Validation Errors:', errors);
+    console.log('Current form values:', form.getValues());
+    console.log('Current step2 store data:', step2);
     
     // Show toast notification
     toast.error('Please fill in all required fields correctly', {
@@ -107,12 +152,6 @@ export function Step2AboutYou({ onNext }: Step2Props) {
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit, onError)} className="space-y-6">
         <div className="space-y-4">
-          <div>
-            <h2 className="text-2xl font-bold">About You</h2>
-            <p className="text-muted-foreground mt-1">
-              Tell us a bit more about yourself
-            </p>
-          </div>
 
           <FormField
             control={form.control}
@@ -296,7 +335,15 @@ export function Step2AboutYou({ onNext }: Step2Props) {
           )}
         </div>
 
-        <FormNavigation showSaveForLater={true} />
+        <div className="pt-6">
+          <Button 
+            type="submit" 
+            className="w-full text-white px-8 py-3 text-base hover:opacity-90 transition-opacity"
+            style={{ backgroundColor: '#234c8a' }}
+          >
+            Continue
+          </Button>
+        </div>
       </form>
     </Form>
   );

@@ -37,7 +37,7 @@ export function FormNavigation({
   };
 
   return (
-    <div className="flex justify-between items-center pt-4 border-t">
+    <div className="flex justify-between items-center pt-6 mt-8 border-t border-gray-200">
       <div className="flex gap-3">
         {showBack && currentStep > 1 && (
           <Button
@@ -45,6 +45,7 @@ export function FormNavigation({
             variant="outline"
             onClick={handleBack}
             disabled={isSubmitting}
+            className="border-gray-300 text-gray-700 hover:bg-gray-50 px-6 py-3 rounded-lg font-medium transition-colors"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back
@@ -59,6 +60,7 @@ export function FormNavigation({
             variant="ghost"
             onClick={handleSaveForLater}
             disabled={isSubmitting}
+            className="text-gray-600 hover:text-gray-800 hover:bg-gray-100"
           >
             Save for Later
           </Button>
@@ -69,6 +71,7 @@ export function FormNavigation({
           size="lg" 
           disabled={isSubmitting}
           onClick={onNext}
+          className="bg-[#234c8a] text-white hover:bg-[#1e3f73] px-8 py-3 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           {isSubmitting ? 'Saving...' : currentStep === 6 ? 'Submit Application' : 'Continue'}
