@@ -114,18 +114,27 @@ export function Step2AboutYou({ onNext }: Step2Props) {
   const onSubmit = async (data: Step2FormData) => {
     console.log('Step 2 Form Data:', data);
     
-    // Transform co_applicants to match Applicant type if needed
-    const transformedData = {
-      ...data,
-      co_applicants: data.co_applicants?.map((coApp, index) => ({
-        ...coApp,
-        applicant_order: index + 2, // Primary is 1, co-applicants start at 2
-      })) || [],
-    };
-    
-    console.log('Step 2 Transformed Data:', transformedData);
-    updateStep2(transformedData);
-    onNext();
+    try {
+      // Transform co_applicants to match Applicant type if needed
+      const transformedData = {
+        ...data,
+        co_applicants: data.co_applicants?.map((coApp, index) => ({
+          ...coApp,
+          applicant_order: index + 2, // Primary is 1, co-applicants start at 2
+        })) || [],
+      };
+      
+      console.log('Step 2 Transformed Data:', transformedData);
+      
+      // Update with database sync
+      await updateStep2(transformedData);
+      
+      onNext();
+    } catch (error) {
+      console.error('Error saving Step 2 data:', error);
+      // Still proceed to next step even if database sync fails
+      onNext();
+    }
   };
 
   const onError = (errors: FieldErrors<Step2FormData>) => {

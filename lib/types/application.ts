@@ -216,4 +216,5 @@ export interface FormState {
   applicationId: string | null;
   ghlContactId: string | null; // GoHighLevel contact ID
   ghlOpportunityId: string | null; // GoHighLevel opportunity ID
+  lastError?: string | null; // Track database errors
 }

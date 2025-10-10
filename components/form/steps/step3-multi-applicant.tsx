@@ -14,7 +14,7 @@ interface Step3MultiApplicantProps {
 }
 
 export function Step3MultiApplicant({ onNext }: Step3MultiApplicantProps) {
-  const { step2, step3, updateStep3, previousStep } = useFormStore();
+  const { step2, step3, updateStep3, updateStep3ForApplicant, previousStep } = useFormStore();
   const selectedApplicantIndex = useApplicantSelector();
   const hasResetRef = useRef(false);
 
@@ -83,34 +83,44 @@ export function Step3MultiApplicant({ onNext }: Step3MultiApplicantProps) {
 
 
   // Handle form completion for current applicant
-  const handleApplicantFormNext = (formData?: Step3FormData) => {
+  const handleApplicantFormNext = async (formData?: Step3FormData) => {
     if (!formData) return;
-    if (selectedApplicantIndex === 0) {
-      // Primary applicant
-      updateStep3(formData);
-    } else {
-      // Co-applicant - map Step3FormData to co-applicant format
-      const coApplicantIndex = selectedApplicantIndex - 1;
-      const currentCoApplicants = [...(step3.co_applicants || [])];
-      currentCoApplicants[coApplicantIndex] = {
-        current_address: formData.current_address,
-        move_in_date: formData.move_in_date,
-        homeowner_or_tenant: formData.homeowner_or_tenant,
-        monthly_mortgage_or_rent: formData.monthly_mortgage_or_rent,
-        monthly_payment_currency: formData.monthly_payment_currency,
-        current_property_value: formData.current_property_value || 0,
-        property_value_currency: formData.property_value_currency || 'EUR',
-        mortgage_outstanding: formData.mortgage_outstanding || 0,
-        mortgage_outstanding_currency: formData.mortgage_outstanding_currency || 'EUR',
-        lender_or_landlord_details: formData.lender_or_landlord_details || '',
-        previous_address: formData.previous_address || '',
-        previous_move_in_date: formData.previous_move_in_date || null,
-        previous_move_out_date: formData.previous_move_out_date || null,
-        tax_country: formData.tax_country,
-        has_children: formData.has_children,
-        children: formData.children || [],
-      };
-      updateStep3({ co_applicants: currentCoApplicants });
+    
+    try {
+      if (selectedApplicantIndex === 0) {
+        // Primary applicant - update local state and sync to database
+        await updateStep3(formData);
+        await updateStep3ForApplicant(selectedApplicantIndex, formData);
+      } else {
+        // Co-applicant - save to database and update local state
+        await updateStep3ForApplicant(selectedApplicantIndex, formData);
+        
+        // Also update local state for co-applicant
+        const coApplicantIndex = selectedApplicantIndex - 1;
+        const currentCoApplicants = [...(step3.co_applicants || [])];
+        currentCoApplicants[coApplicantIndex] = {
+          current_address: formData.current_address,
+          move_in_date: formData.move_in_date,
+          homeowner_or_tenant: formData.homeowner_or_tenant,
+          monthly_mortgage_or_rent: formData.monthly_mortgage_or_rent,
+          monthly_payment_currency: formData.monthly_payment_currency,
+          current_property_value: formData.current_property_value || 0,
+          property_value_currency: formData.property_value_currency || 'EUR',
+          mortgage_outstanding: formData.mortgage_outstanding || 0,
+          mortgage_outstanding_currency: formData.mortgage_outstanding_currency || 'EUR',
+          lender_or_landlord_details: formData.lender_or_landlord_details || '',
+          previous_address: formData.previous_address || '',
+          previous_move_in_date: formData.previous_move_in_date || null,
+          previous_move_out_date: formData.previous_move_out_date || null,
+          tax_country: formData.tax_country,
+          has_children: formData.has_children,
+          children: formData.children || [],
+        };
+        updateStep3({ co_applicants: currentCoApplicants });
+      }
+    } catch (error) {
+      console.error('Error saving Step 3 data:', error);
+      // Continue with the flow even if database sync fails
     }
   };
 

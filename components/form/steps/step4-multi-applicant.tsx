@@ -13,7 +13,7 @@ interface Step4MultiApplicantProps {
 }
 
 export function Step4MultiApplicant({ onNext }: Step4MultiApplicantProps) {
-  const { step2, step4, updateStep4, previousStep } = useFormStore();
+  const { step2, step4, updateStep4, updateStep4ForApplicant, previousStep } = useFormStore();
   const selectedApplicantIndex = useApplicantSelector();
   const hasResetRef = useRef(false);
 
@@ -71,12 +71,16 @@ export function Step4MultiApplicant({ onNext }: Step4MultiApplicantProps) {
 
 
   // Handle form completion for current applicant
-  const handleApplicantFormNext = (formData?: Step4FormData) => {
+  const handleApplicantFormNext = async (formData?: Step4FormData) => {
     if (!formData) return;
     
-    if (selectedApplicantIndex === 0) {
-      // Primary applicant - transform to store format
-      const storeData = {
+    try {
+      // Save to database for the current applicant
+      await updateStep4ForApplicant(selectedApplicantIndex, formData);
+      
+      if (selectedApplicantIndex === 0) {
+        // Primary applicant - also update local state in store format
+        const storeData = {
         employment_status: formData.employment_status,
         employment_details: {
           job_title: formData.job_title,
@@ -140,6 +144,10 @@ export function Step4MultiApplicant({ onNext }: Step4MultiApplicantProps) {
         },
       };
       updateStep4({ co_applicants: currentCoApplicants });
+    }
+    } catch (error) {
+      console.error('Error saving Step 4 data:', error);
+      // Continue with the flow even if database sync fails
     }
   };
 

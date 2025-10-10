@@ -29,7 +29,17 @@ interface Step1Props {
 }
 
 export function Step1LeadCapture({ onNext }: Step1Props) {
-  const { step1, updateStep1, setGhlContactId, setGhlOpportunityId, ghlContactId } = useFormStore();
+  const { 
+    step1, 
+    updateStep1, 
+    setGhlContactId, 
+    setGhlOpportunityId, 
+    ghlContactId,
+    applicationId,
+    createNewApplication,
+    lastError,
+    clearError
+  } = useFormStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<Step1FormData>({
@@ -60,9 +70,29 @@ export function Step1LeadCapture({ onNext }: Step1Props) {
 
   const onSubmit = async (data: Step1FormData) => {
     setIsSubmitting(true);
+    clearError(); // Clear any previous errors
     
     try {
-      updateStep1(data);
+      // Create application if it doesn't exist
+      let currentApplicationId = applicationId;
+      if (!currentApplicationId) {
+        currentApplicationId = await createNewApplication();
+        if (!currentApplicationId) {
+          throw new Error('Failed to create application');
+        }
+      }
+
+      // Update Step 1 data (this will auto-sync to database)
+      await updateStep1(data);
+
+      // Check for database sync errors
+      if (lastError) {
+        console.error('Database sync error:', lastError);
+        // Continue with GHL integration but show warning
+        toast.error('Database sync warning', {
+          description: 'Data saved locally but may not be synced to server',
+        });
+      }
       
       // Create GHL contact if not already created
       if (!ghlContactId) {
@@ -86,23 +116,27 @@ export function Step1LeadCapture({ onNext }: Step1Props) {
               const existingData = result.existingData;
               
               // Update form fields with existing data
+              const updatedData = { ...data };
               if (existingData.first_name) {
                 form.setValue('first_name', existingData.first_name);
-                updateStep1({ ...data, first_name: existingData.first_name });
+                updatedData.first_name = existingData.first_name;
               }
               if (existingData.last_name) {
                 form.setValue('last_name', existingData.last_name);
-                updateStep1({ ...data, last_name: existingData.last_name });
+                updatedData.last_name = existingData.last_name;
               }
               if (existingData.mobile) {
                 form.setValue('mobile', existingData.mobile);
-                updateStep1({ ...data, mobile: existingData.mobile });
+                updatedData.mobile = existingData.mobile;
               }
               if (existingData.date_of_birth) {
                 const dob = new Date(existingData.date_of_birth);
                 form.setValue('date_of_birth', dob);
-                updateStep1({ ...data, date_of_birth: dob });
+                updatedData.date_of_birth = dob;
               }
+              
+              // Update with merged data
+              await updateStep1(updatedData);
 
               toast.success('Existing contact found!', {
                 description: 'We\'ve populated your details from our records',

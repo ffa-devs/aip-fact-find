@@ -1,0 +1,548 @@
+{
+  "applicant_fields_schema": {
+    "description": "Complete aggregation of all fields collected from applicants across all 6 steps of the AIP Fact Find form",
+    "last_updated": "2025-01-10",
+    "version": "1.0.0",
+    "structure": {
+      "primary_applicant": {
+        "description": "Main applicant data collected across all steps",
+        "fields": {
+          "step1_lead_capture": {
+            "first_name": {
+              "type": "string",
+              "required": true,
+              "description": "Applicant's first name"
+            },
+            "last_name": {
+              "type": "string",
+              "required": true,
+              "description": "Applicant's last name"
+            },
+            "date_of_birth": {
+              "type": "Date",
+              "required": true,
+              "description": "Date of birth (age calculated automatically)"
+            },
+            "email": {
+              "type": "string",
+              "required": true,
+              "validation": "email format",
+              "description": "Primary email address"
+            },
+            "mobile": {
+              "type": "string",
+              "required": true,
+              "validation": "valid phone number (libphonenumber-js)",
+              "description": "Mobile phone number"
+            }
+          },
+          "step2_personal_info": {
+            "nationality": {
+              "type": "string",
+              "required": true,
+              "description": "Nationality/citizenship"
+            },
+            "marital_status": {
+              "type": "enum",
+              "required": true,
+              "options": ["single", "married", "civil_partnership", "divorced", "widowed"],
+              "description": "Current marital status"
+            },
+            "telephone": {
+              "type": "string",
+              "required": false,
+              "validation": "valid phone number when provided",
+              "description": "Optional landline/telephone number"
+            }
+          },
+          "step3_property_info": {
+            "current_address": {
+              "type": "string",
+              "required": true,
+              "description": "Current residential address"
+            },
+            "move_in_date": {
+              "type": "Date",
+              "required": true,
+              "description": "Date moved into current address"
+            },
+            "homeowner_or_tenant": {
+              "type": "enum",
+              "required": true,
+              "options": ["homeowner", "tenant"],
+              "description": "Current housing status"
+            },
+            "monthly_mortgage_or_rent": {
+              "type": "number",
+              "required": true,
+              "min": 0,
+              "description": "Monthly housing payment amount"
+            },
+            "monthly_payment_currency": {
+              "type": "string",
+              "required": true,
+              "description": "Currency for monthly payment"
+            },
+            "current_property_value": {
+              "type": "number",
+              "required": false,
+              "min": 0,
+              "description": "Current estimated property value (if homeowner)"
+            },
+            "property_value_currency": {
+              "type": "string",
+              "required": false,
+              "description": "Currency for property value"
+            },
+            "mortgage_outstanding": {
+              "type": "number",
+              "required": false,
+              "min": 0,
+              "description": "Outstanding mortgage balance (if homeowner)"
+            },
+            "mortgage_outstanding_currency": {
+              "type": "string",
+              "required": false,
+              "description": "Currency for mortgage outstanding"
+            },
+            "lender_or_landlord_details": {
+              "type": "string",
+              "required": false,
+              "description": "Lender or landlord contact details"
+            },
+            "previous_address": {
+              "type": "string",
+              "required": false,
+              "description": "Previous residential address"
+            },
+            "previous_move_in_date": {
+              "type": "Date",
+              "required": false,
+              "description": "Date moved into previous address"
+            },
+            "previous_move_out_date": {
+              "type": "Date",
+              "required": false,
+              "description": "Date moved out of previous address"
+            },
+            "tax_country": {
+              "type": "string",
+              "required": true,
+              "description": "Country where taxes are paid"
+            },
+            "has_children": {
+              "type": "boolean",
+              "required": true,
+              "description": "Whether applicant has children"
+            },
+            "children": {
+              "type": "array",
+              "required_if": "has_children is true",
+              "item_schema": {
+                "date_of_birth": {
+                  "type": "Date",
+                  "required": true,
+                  "description": "Child's date of birth"
+                }
+              },
+              "description": "Array of children's birth dates"
+            }
+          },
+          "step4_employment": {
+            "employment_status": {
+              "type": "enum",
+              "required": true,
+              "options": ["employed", "self_employed", "director", "retired_pension", "home_maker", "other"],
+              "description": "Current employment status"
+            },
+            "employment_details": {
+              "description": "Employment-specific fields based on employment_status",
+              "conditional_fields": {
+                "employed": {
+                  "job_title": {
+                    "type": "string",
+                    "required": true,
+                    "description": "Current job title"
+                  },
+                  "employer_name": {
+                    "type": "string",
+                    "required": true,
+                    "description": "Current employer name"
+                  },
+                  "employer_address": {
+                    "type": "string",
+                    "required": true,
+                    "description": "Employer's address"
+                  },
+                  "gross_annual_salary": {
+                    "type": "number",
+                    "required": false,
+                    "min": 0,
+                    "description": "Gross annual salary"
+                  },
+                  "net_monthly_income": {
+                    "type": "number",
+                    "required": false,
+                    "min": 0,
+                    "description": "Net monthly income"
+                  },
+                  "employment_start_date": {
+                    "type": "Date",
+                    "required": true,
+                    "description": "Employment start date"
+                  },
+                  "previous_employment_details": {
+                    "type": "string",
+                    "required": false,
+                    "description": "Details of previous employment"
+                  }
+                },
+                "self_employed": {
+                  "business_name": {
+                    "type": "string",
+                    "required": true,
+                    "description": "Business name"
+                  },
+                  "business_address": {
+                    "type": "string",
+                    "required": true,
+                    "description": "Business address"
+                  },
+                  "business_website": {
+                    "type": "string",
+                    "required": false,
+                    "description": "Business website URL"
+                  },
+                  "company_creation_date": {
+                    "type": "Date",
+                    "required": true,
+                    "description": "Business creation/registration date"
+                  },
+                  "total_gross_annual_income": {
+                    "type": "number",
+                    "required": false,
+                    "min": 0,
+                    "description": "Total gross annual income"
+                  },
+                  "net_annual_income": {
+                    "type": "number",
+                    "required": false,
+                    "min": 0,
+                    "description": "Net annual income"
+                  },
+                  "bonus_overtime_commission_details": {
+                    "type": "string",
+                    "required": false,
+                    "description": "Details of bonus/overtime/commission"
+                  },
+                  "accountant_can_provide_info": {
+                    "type": "boolean",
+                    "required": true,
+                    "description": "Whether accountant can provide financial information"
+                  },
+                  "accountant_contact_details": {
+                    "type": "string",
+                    "required_if": "accountant_can_provide_info is true",
+                    "description": "Accountant's contact details"
+                  }
+                },
+                "director": {
+                  "business_name": {
+                    "type": "string",
+                    "required": true,
+                    "description": "Company name"
+                  },
+                  "business_address": {
+                    "type": "string",
+                    "required": true,
+                    "description": "Company address"
+                  },
+                  "business_website": {
+                    "type": "string",
+                    "required": false,
+                    "description": "Company website URL"
+                  },
+                  "company_creation_date": {
+                    "type": "Date",
+                    "required": true,
+                    "description": "Company creation/registration date"
+                  },
+                  "total_gross_annual_income": {
+                    "type": "number",
+                    "required": false,
+                    "min": 0,
+                    "description": "Total gross annual income"
+                  },
+                  "net_annual_income": {
+                    "type": "number",
+                    "required": false,
+                    "min": 0,
+                    "description": "Net annual income"
+                  },
+                  "company_stake_percentage": {
+                    "type": "number",
+                    "required": true,
+                    "min": 0,
+                    "max": 100,
+                    "description": "Percentage ownership in company"
+                  },
+                  "bonus_overtime_commission_details": {
+                    "type": "string",
+                    "required": false,
+                    "description": "Details of bonus/overtime/commission"
+                  },
+                  "accountant_can_provide_info": {
+                    "type": "boolean",
+                    "required": true,
+                    "description": "Whether accountant can provide financial information"
+                  },
+                  "accountant_contact_details": {
+                    "type": "string",
+                    "required_if": "accountant_can_provide_info is true",
+                    "description": "Accountant's contact details"
+                  }
+                }
+              }
+            },
+            "financial_commitments": {
+              "description": "Financial obligations and commitments (applies to all employment types)",
+              "personal_loans": {
+                "type": "number",
+                "required": true,
+                "min": 0,
+                "description": "Outstanding personal loans amount"
+              },
+              "credit_card_debt": {
+                "type": "number",
+                "required": true,
+                "min": 0,
+                "description": "Outstanding credit card debt"
+              },
+              "car_loans_lease": {
+                "type": "number",
+                "required": true,
+                "min": 0,
+                "description": "Car loans/lease payments"
+              },
+              "has_credit_or_legal_issues": {
+                "type": "boolean",
+                "required": true,
+                "description": "Whether applicant has credit or legal issues"
+              },
+              "credit_legal_issues_details": {
+                "type": "string",
+                "required_if": "has_credit_or_legal_issues is true",
+                "description": "Details of credit or legal issues"
+              }
+            }
+          }
+        }
+      },
+      "co_applicants": {
+        "description": "Co-applicant data structure (identical to primary applicant for applicable steps)",
+        "note": "Co-applicants are collected in Step 2 and have their own instances for Steps 3 and 4",
+        "step2_basic_info": {
+          "first_name": {
+            "type": "string",
+            "required": true,
+            "description": "Co-applicant's first name"
+          },
+          "last_name": {
+            "type": "string",
+            "required": true,
+            "description": "Co-applicant's last name"
+          },
+          "email": {
+            "type": "string",
+            "required": true,
+            "validation": "email format",
+            "description": "Co-applicant's email address"
+          },
+          "mobile": {
+            "type": "string",
+            "required": true,
+            "validation": "valid phone number",
+            "description": "Co-applicant's mobile phone"
+          },
+          "date_of_birth": {
+            "type": "Date",
+            "required": true,
+            "description": "Co-applicant's date of birth"
+          },
+          "nationality": {
+            "type": "string",
+            "required": true,
+            "description": "Co-applicant's nationality"
+          },
+          "marital_status": {
+            "type": "enum",
+            "required": true,
+            "options": ["single", "married", "civil_partnership", "divorced", "widowed"],
+            "description": "Co-applicant's marital status"
+          }
+        },
+        "step3_property_info": {
+          "description": "Same fields as primary applicant step3_property_info",
+          "note": "Each co-applicant completes their own property information"
+        },
+        "step4_employment": {
+          "description": "Same fields as primary applicant step4_employment",
+          "note": "Each co-applicant completes their own employment and financial information"
+        }
+      },
+      "shared_application_data": {
+        "description": "Data that applies to the entire application (not applicant-specific)",
+        "step5_portfolio": {
+          "has_rental_properties": {
+            "type": "boolean",
+            "required": true,
+            "description": "Whether applicant(s) have rental properties"
+          },
+          "rental_properties": {
+            "type": "array",
+            "required_if": "has_rental_properties is true",
+            "item_schema": {
+              "property_address": {
+                "type": "string",
+                "required": true,
+                "description": "Rental property address"
+              },
+              "current_valuation": {
+                "type": "number",
+                "required": false,
+                "min": 0,
+                "description": "Current property valuation"
+              },
+              "mortgage_outstanding": {
+                "type": "number",
+                "required": false,
+                "min": 0,
+                "description": "Outstanding mortgage on rental property"
+              },
+              "monthly_mortgage_payment": {
+                "type": "number",
+                "required": false,
+                "min": 0,
+                "description": "Monthly mortgage payment for rental property"
+              },
+              "monthly_rent_received": {
+                "type": "number",
+                "required": false,
+                "min": 0,
+                "description": "Monthly rent received from property"
+              }
+            },
+            "description": "Array of rental properties owned"
+          },
+          "other_assets": {
+            "type": "string",
+            "required": false,
+            "description": "Description of other assets"
+          }
+        },
+        "step6_spanish_property": {
+          "urgency_level": {
+            "type": "enum",
+            "required": true,
+            "options": ["urgent", "pre_approval", "general_info", "other"],
+            "description": "Urgency level for property purchase"
+          },
+          "purchase_price": {
+            "type": "number",
+            "required": true,
+            "min": 1,
+            "description": "Spanish property purchase price"
+          },
+          "deposit_available": {
+            "type": "number",
+            "required": true,
+            "min": 1,
+            "description": "Deposit amount available"
+          },
+          "property_address": {
+            "type": "string",
+            "required": true,
+            "description": "Spanish property address"
+          },
+          "home_status": {
+            "type": "enum",
+            "required": true,
+            "options": ["main_residence", "holiday_home", "investment", "other"],
+            "description": "Intended use of Spanish property"
+          },
+          "property_type": {
+            "type": "enum",
+            "required": true,
+            "options": ["urban", "rustic", "commercial"],
+            "description": "Type of Spanish property"
+          },
+          "real_estate_agent_contact": {
+            "type": "string",
+            "required": false,
+            "description": "Real estate agent contact details"
+          },
+          "lawyer_contact": {
+            "type": "string",
+            "required": false,
+            "description": "Lawyer contact details"
+          },
+          "additional_information": {
+            "type": "string",
+            "required": false,
+            "description": "Any additional information or notes"
+          },
+          "authorization_consent": {
+            "type": "boolean",
+            "required": true,
+            "validation": "must be true",
+            "description": "Authorization and consent checkbox"
+          }
+        }
+      },
+      "metadata": {
+        "description": "Application metadata and tracking information",
+        "currentStep": {
+          "type": "number",
+          "description": "Current step in the application process (1-6)"
+        },
+        "applicationId": {
+          "type": "string",
+          "description": "Unique application identifier"
+        },
+        "ghlContactId": {
+          "type": "string",
+          "description": "GoHighLevel contact ID for lead tracking"
+        },
+        "ghlOpportunityId": {
+          "type": "string",
+          "description": "GoHighLevel opportunity ID for pipeline tracking"
+        }
+      }
+    },
+    "data_flow": {
+      "step1": "Lead capture - creates GHL contact immediately",
+      "step2": "Personal info + co-applicant collection",
+      "step3": "Multi-applicant property information (each applicant completes separately)",
+      "step4": "Multi-applicant employment information (each applicant completes separately)",
+      "step5": "Shared portfolio information",
+      "step6": "Spanish property details + final submission"
+    },
+    "validation_rules": {
+      "phone_numbers": "Validated using libphonenumber-js",
+      "dates": "Must be valid Date objects",
+      "conditional_validation": "Employment fields validated based on employment_status",
+      "multi_applicant_flow": "Steps 3 & 4 cycle through each applicant individually",
+      "co_applicant_requirements": "If has_co_applicants is true, at least one co-applicant required"
+    },
+    "storage": {
+      "persistence": "Zustand store with localStorage persistence",
+      "key": "aip-form-storage",
+      "auto_save": "Form data automatically saved on each step completion"
+    },
+    "integrations": {
+      "ghl_webhook": "Sends data to GoHighLevel on step completions",
+      "supabase": "Planned for production data storage",
+      "email_automation": "Triggered through GHL integration"
+    }
+  }
+}

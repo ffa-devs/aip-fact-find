@@ -13,17 +13,49 @@ import { SidebarProvider, SidebarTrigger, SidebarInset } from '@/components/ui/s
 import Image from 'next/image'
 
 export function MultiStepForm() {
-  const { currentStep, nextStep } = useFormStore()
+  const { 
+    currentStep, 
+    nextStep, 
+    applicationId, 
+    loadApplication, 
+    saveCurrentProgress,
+    lastError,
+    clearError 
+  } = useFormStore()
+
+  // Initialize application on first load
+  useEffect(() => {
+    const initializeApplication = async () => {
+      // Check if there's an application ID in localStorage to resume
+      if (applicationId) {
+        try {
+          const success = await loadApplication(applicationId)
+          if (success) {
+            console.log('Loaded existing application:', applicationId)
+          } else {
+            console.log('Failed to load application, starting fresh')
+            clearError()
+          }
+        } catch (error) {
+          console.error('Error loading application:', error)
+          clearError()
+        }
+      }
+    }
+
+    initializeApplication()
+  }, [applicationId, loadApplication, clearError])
 
   // Auto-save functionality
   useEffect(() => {
-    const saveInterval = setInterval(() => {
-      // TODO: Implement auto-save to Supabase
-      console.log('Auto-saving form data...')
+    const saveInterval = setInterval(async () => {
+      if (applicationId) {
+        await saveCurrentProgress()
+      }
     }, 30000) // Every 30 seconds
 
     return () => clearInterval(saveInterval)
-  }, [])
+  }, [applicationId, saveCurrentProgress])
 
   const handleNext = () => {
     nextStep()
@@ -91,49 +123,72 @@ export function MultiStepForm() {
     <SidebarProvider
       style={
         {
-          '--sidebar-width': '20rem',
-          '--sidebar-width-mobile': '18rem',
+          '--sidebar-width': '280px',
+          '--sidebar-width-mobile': '280px',
         } as React.CSSProperties
       }
     >
       <AppSidebar />
       <SidebarInset>
-        <div className="flex flex-col min-h-screen">
-          {/* Header */}
-          <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 md:px-8 py-6">
-            <div className="flex items-center">
-              <div className="flex items-center justify-between w-full">
-                <SidebarTrigger className="md:hidden" />
-                <Image
-                  src="/logo-long.jpg"
-                  alt="Fluent Finance Abroad"
-                  width={160}
-                  height={40}
-                  className="h-15 w-auto"
-                />
-                <div className="hidden md:block text-right text-sm text-gray-600">
-                  <p className="font-medium">info@fluentfinanceabroad.com</p>
-                  <p>Tel: +34 952 85 36 47</p>
-                  <p className="text-xs">UK: +44 (0) 2033939902 | US: 001 2023791946</p>
+        <header className="flex h-16 shrink-0 items-center border-b px-4">
+          <SidebarTrigger className="-ml-1" />
+          <div className="mx-auto flex items-center gap-4">
+            <Image
+              src="/ffa-logo.png"
+              alt="FFA Financial"
+              width={40}
+              height={40}
+              className="rounded-lg"
+            />
+            <div>
+              <h1 className="text-lg font-semibold" style={{ color: '#234c8a' }}>
+                AIP Fact Find
+              </h1>
+              <p className="text-sm text-gray-600">
+                📧 hello@ffafinancial.com | ☎️ +34 952 806 120
+              </p>
+            </div>
+          </div>
+        </header>
+
+        <div className="flex-1 space-y-4 p-6">
+          {/* Database Error Banner */}
+          {lastError && (
+            <div className="mx-auto max-w-2xl">
+              <div className="rounded-lg bg-yellow-50 border border-yellow-200 p-4">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-yellow-800">Database Sync Warning</h3>
+                    <p className="text-sm text-yellow-700 mt-1">{lastError}</p>
+                    <p className="text-xs text-yellow-600 mt-1">Your data is saved locally and will sync when connection is restored.</p>
+                  </div>
+                  <div className="ml-auto pl-3">
+                    <button
+                      type="button"
+                      className="inline-flex rounded-md bg-yellow-50 p-1.5 text-yellow-500 hover:bg-yellow-100"
+                      onClick={clearError}
+                    >
+                      <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
 
-          {/* Form Content */}
-          <div className="flex-1 px-4 md:px-8 py-6 bg-white">
-            <div className="max-w-2xl">{renderStep()}</div>
-          </div>
-
-          {/* Trust Indicators Footer */}
-          <div className="bg-gray-50 px-4 md:px-8 py-4 border-t border-gray-200">
-            <div className="max-w-2xl text-sm text-gray-500 space-y-1">
-              <p className="flex items-center gap-2">
-                <span className="text-green-600">🔒</span>
-                Your data is encrypted and secure
-              </p>
-              <p>Auto-saved every 30 seconds • You can resume anytime</p>
+          <div className="mx-auto max-w-2xl space-y-6">
+            <div className="text-center space-y-2">
+              <h2 className="text-2xl font-bold text-gray-900">{getStepTitle()}</h2>
+              <p className="text-gray-600">{getStepSubtitle()}</p>
             </div>
+            {renderStep()}
           </div>
         </div>
       </SidebarInset>

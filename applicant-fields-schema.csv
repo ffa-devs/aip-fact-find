@@ -1,0 +1,82 @@
+Step,Section,Field_Name,Field_Type,Required,Validation,Options,Description,Applies_To,Conditional_Logic
+1,Lead Capture,first_name,string,TRUE,min 1 char,,Applicant's first name,Primary + Co-applicants,
+1,Lead Capture,last_name,string,TRUE,min 1 char,,Applicant's last name,Primary + Co-applicants,
+1,Lead Capture,date_of_birth,Date,TRUE,valid date,,Date of birth (age calculated automatically),Primary + Co-applicants,
+1,Lead Capture,email,string,TRUE,email format,,Primary email address,Primary + Co-applicants,
+1,Lead Capture,mobile,string,TRUE,libphonenumber-js,,Mobile phone number,Primary + Co-applicants,
+2,Personal Info,nationality,string,TRUE,min 1 char,,Nationality/citizenship,Primary + Co-applicants,
+2,Personal Info,marital_status,enum,TRUE,,"single,married,civil_partnership,divorced,widowed",Current marital status,Primary + Co-applicants,
+2,Personal Info,telephone,string,FALSE,libphonenumber-js when provided,,Optional landline/telephone number,Primary + Co-applicants,
+2,Personal Info,has_co_applicants,boolean,TRUE,,,Whether application includes co-applicants,Primary only,
+2,Co-applicant Collection,co_applicants,array,conditional,min 1 when has_co_applicants=true,,Array of co-applicant basic information,Primary only,Required if has_co_applicants=true
+3,Property Info,current_address,string,TRUE,min 1 char,,Current residential address,All applicants,
+3,Property Info,move_in_date,Date,TRUE,valid date,,Date moved into current address,All applicants,
+3,Property Info,homeowner_or_tenant,enum,TRUE,,"homeowner,tenant",Current housing status,All applicants,
+3,Property Info,monthly_mortgage_or_rent,number,TRUE,min 0,,Monthly housing payment amount,All applicants,
+3,Property Info,monthly_payment_currency,string,TRUE,min 1 char,,Currency for monthly payment,All applicants,
+3,Property Info,current_property_value,number,FALSE,min 0,,Current estimated property value (if homeowner),All applicants,
+3,Property Info,property_value_currency,string,FALSE,,,Currency for property value,All applicants,
+3,Property Info,mortgage_outstanding,number,FALSE,min 0,,Outstanding mortgage balance (if homeowner),All applicants,
+3,Property Info,mortgage_outstanding_currency,string,FALSE,,,Currency for mortgage outstanding,All applicants,
+3,Property Info,lender_or_landlord_details,string,FALSE,,,Lender or landlord contact details,All applicants,
+3,Property Info,previous_address,string,FALSE,,,Previous residential address,All applicants,
+3,Property Info,previous_move_in_date,Date,FALSE,valid date,,Date moved into previous address,All applicants,
+3,Property Info,previous_move_out_date,Date,FALSE,valid date,,Date moved out of previous address,All applicants,
+3,Property Info,tax_country,string,TRUE,min 1 char,,Country where taxes are paid,All applicants,
+3,Property Info,has_children,boolean,TRUE,,,Whether applicant has children,All applicants,
+3,Property Info,children,array,conditional,min 1 when has_children=true,,Array of children's birth dates,All applicants,Required if has_children=true
+3,Children,child_date_of_birth,Date,TRUE,valid date,,Child's date of birth,All applicants,For each child in children array
+4,Employment,employment_status,enum,TRUE,,"employed,self_employed,director,retired_pension,home_maker,other",Current employment status,All applicants,
+4,Employment - Employed,job_title,string,conditional,min 1 char,,Current job title,All applicants,Required if employment_status=employed
+4,Employment - Employed,employer_name,string,conditional,min 1 char,,Current employer name,All applicants,Required if employment_status=employed
+4,Employment - Employed,employer_address,string,conditional,min 1 char,,Employer's address,All applicants,Required if employment_status=employed
+4,Employment - Employed,gross_annual_salary,number,FALSE,min 0,,Gross annual salary,All applicants,Only if employment_status=employed
+4,Employment - Employed,net_monthly_income,number,FALSE,min 0,,Net monthly income,All applicants,Only if employment_status=employed
+4,Employment - Employed,employment_start_date,Date,conditional,valid date,,Employment start date,All applicants,Required if employment_status=employed
+4,Employment - Employed,previous_employment_details,string,FALSE,,,Details of previous employment,All applicants,Only if employment_status=employed
+4,Employment - Self Employed,business_name,string,conditional,min 1 char,,Business name,All applicants,Required if employment_status=self_employed
+4,Employment - Self Employed,business_address,string,conditional,min 1 char,,Business address,All applicants,Required if employment_status=self_employed
+4,Employment - Self Employed,business_website,string,FALSE,,,Business website URL,All applicants,Only if employment_status=self_employed
+4,Employment - Self Employed,company_creation_date,Date,conditional,valid date,,Business creation/registration date,All applicants,Required if employment_status=self_employed
+4,Employment - Self Employed,total_gross_annual_income,number,FALSE,min 0,,Total gross annual income,All applicants,Only if employment_status=self_employed
+4,Employment - Self Employed,net_annual_income,number,FALSE,min 0,,Net annual income,All applicants,Only if employment_status=self_employed
+4,Employment - Self Employed,bonus_overtime_commission_details,string,FALSE,,,Details of bonus/overtime/commission,All applicants,Only if employment_status=self_employed
+4,Employment - Self Employed,accountant_can_provide_info,boolean,conditional,,,Whether accountant can provide financial information,All applicants,Required if employment_status=self_employed
+4,Employment - Self Employed,accountant_contact_details,string,conditional,min 1 char,,Accountant's contact details,All applicants,Required if accountant_can_provide_info=true
+4,Employment - Director,business_name,string,conditional,min 1 char,,Company name,All applicants,Required if employment_status=director
+4,Employment - Director,business_address,string,conditional,min 1 char,,Company address,All applicants,Required if employment_status=director
+4,Employment - Director,business_website,string,FALSE,,,Company website URL,All applicants,Only if employment_status=director
+4,Employment - Director,company_creation_date,Date,conditional,valid date,,Company creation/registration date,All applicants,Required if employment_status=director
+4,Employment - Director,total_gross_annual_income,number,FALSE,min 0,,Total gross annual income,All applicants,Only if employment_status=director
+4,Employment - Director,net_annual_income,number,FALSE,min 0,,Net annual income,All applicants,Only if employment_status=director
+4,Employment - Director,company_stake_percentage,number,conditional,min 0 max 100,,Percentage ownership in company,All applicants,Required if employment_status=director
+4,Employment - Director,bonus_overtime_commission_details,string,FALSE,,,Details of bonus/overtime/commission,All applicants,Only if employment_status=director
+4,Employment - Director,accountant_can_provide_info,boolean,conditional,,,Whether accountant can provide financial information,All applicants,Required if employment_status=director
+4,Employment - Director,accountant_contact_details,string,conditional,min 1 char,,Accountant's contact details,All applicants,Required if accountant_can_provide_info=true
+4,Financial Commitments,personal_loans,number,TRUE,min 0,,Outstanding personal loans amount,All applicants,
+4,Financial Commitments,credit_card_debt,number,TRUE,min 0,,Outstanding credit card debt,All applicants,
+4,Financial Commitments,car_loans_lease,number,TRUE,min 0,,Car loans/lease payments,All applicants,
+4,Financial Commitments,has_credit_or_legal_issues,boolean,TRUE,,,Whether applicant has credit or legal issues,All applicants,
+4,Financial Commitments,credit_legal_issues_details,string,conditional,min 1 char,,Details of credit or legal issues,All applicants,Required if has_credit_or_legal_issues=true
+5,Portfolio,has_rental_properties,boolean,TRUE,,,Whether applicant(s) have rental properties,Application-wide,
+5,Portfolio,rental_properties,array,conditional,min 1 when has_rental_properties=true,,Array of rental properties owned,Application-wide,Required if has_rental_properties=true
+5,Rental Property,property_address,string,TRUE,min 1 char,,Rental property address,Application-wide,For each rental property
+5,Rental Property,current_valuation,number,FALSE,min 0,,Current property valuation,Application-wide,For each rental property
+5,Rental Property,mortgage_outstanding,number,FALSE,min 0,,Outstanding mortgage on rental property,Application-wide,For each rental property
+5,Rental Property,monthly_mortgage_payment,number,FALSE,min 0,,Monthly mortgage payment for rental property,Application-wide,For each rental property
+5,Rental Property,monthly_rent_received,number,FALSE,min 0,,Monthly rent received from property,Application-wide,For each rental property
+5,Portfolio,other_assets,string,FALSE,,,Description of other assets,Application-wide,
+6,Spanish Property,urgency_level,enum,TRUE,,"urgent,pre_approval,general_info,other",Urgency level for property purchase,Application-wide,
+6,Spanish Property,purchase_price,number,TRUE,min 1,,Spanish property purchase price,Application-wide,
+6,Spanish Property,deposit_available,number,TRUE,min 1,,Deposit amount available,Application-wide,
+6,Spanish Property,property_address,string,TRUE,min 1 char,,Spanish property address,Application-wide,
+6,Spanish Property,home_status,enum,TRUE,,"main_residence,holiday_home,investment,other",Intended use of Spanish property,Application-wide,
+6,Spanish Property,property_type,enum,TRUE,,"urban,rustic,commercial",Type of Spanish property,Application-wide,
+6,Spanish Property,real_estate_agent_contact,string,FALSE,,,Real estate agent contact details,Application-wide,
+6,Spanish Property,lawyer_contact,string,FALSE,,,Lawyer contact details,Application-wide,
+6,Spanish Property,additional_information,string,FALSE,,,Any additional information or notes,Application-wide,
+6,Spanish Property,authorization_consent,boolean,TRUE,must be true,,Authorization and consent checkbox,Application-wide,
+META,Metadata,currentStep,number,FALSE,1-6,,Current step in the application process,System,
+META,Metadata,applicationId,string,FALSE,,,Unique application identifier,System,
+META,Metadata,ghlContactId,string,FALSE,,,GoHighLevel contact ID for lead tracking,System,
+META,Metadata,ghlOpportunityId,string,FALSE,,,GoHighLevel opportunity ID for pipeline tracking,System,

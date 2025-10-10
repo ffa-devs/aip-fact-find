@@ -54,23 +54,31 @@ export function Step6SpanishProperty({ onNext }: Step6Props) {
   });
 
   const onSubmit = async (data: Step6FormData) => {
-    // Transform the validated data back to the store format
-    const formData = {
-      urgency_level: data.urgency_level,
-      purchase_price: data.purchase_price,
-      deposit_available: data.deposit_available,
-      property_address: data.property_address,
-      home_status: data.home_status,
-      property_type: data.property_type,
-      real_estate_agent_contact: data.real_estate_agent_contact,
-      lawyer_contact: data.lawyer_contact,
-      additional_information: data.additional_information,
-      authorization_consent: data.authorization_consent,
-    };
+    try {
+      // Transform the validated data back to the store format
+      const formData = {
+        urgency_level: data.urgency_level,
+        purchase_price: data.purchase_price,
+        deposit_available: data.deposit_available,
+        property_address: data.property_address,
+        home_status: data.home_status,
+        property_type: data.property_type,
+        real_estate_agent_contact: data.real_estate_agent_contact,
+        lawyer_contact: data.lawyer_contact,
+        additional_information: data.additional_information,
+        authorization_consent: data.authorization_consent,
+      };
 
-    updateStep6(formData);
-    toast.success('Spanish property information saved successfully');
-    onNext();
+      // Update with database sync (final step submission)
+      await updateStep6(formData);
+      toast.success('Application submitted successfully!');
+      onNext();
+    } catch (error) {
+      console.error('Error saving Step 6 data:', error);
+      toast.error('Error submitting application', {
+        description: 'Please try again or contact support',
+      });
+    }
   };
 
   const onError = () => {

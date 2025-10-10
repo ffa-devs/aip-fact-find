@@ -43,15 +43,22 @@ export function Step5Portfolio({ onNext }: Step5Props) {
   const watchedRentalProperties = form.watch('rental_properties') || [];
 
   const onSubmit = async (data: Step5FormData) => {
-    // Transform the validated data back to the store format
-    const formData = {
-      has_rental_properties: data.has_rental_properties,
-      rental_properties: data.rental_properties || [],
-      other_assets: data.other_assets || '',
-    };
+    try {
+      // Transform the validated data back to the store format
+      const formData = {
+        has_rental_properties: data.has_rental_properties,
+        rental_properties: data.rental_properties || [],
+        other_assets: data.other_assets || '',
+      };
 
-    updateStep5(formData);
-    onNext();
+      // Update with database sync
+      await updateStep5(formData);
+      onNext();
+    } catch (error) {
+      console.error('Error saving Step 5 data:', error);
+      // Still proceed even if database sync fails
+      onNext();
+    }
   };
 
   const onError = () => {

@@ -1,6 +1,17 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { FormState } from '@/lib/types/application';
+import { 
+  createApplication,
+  saveStep1Data,
+  saveStep2Data,
+  saveStep3Data,
+  saveStep4Data,
+  saveStep5Data,
+  saveStep6Data,
+  loadApplicationData,
+  transformDatabaseToFormState
+} from '@/lib/services/supabase-service';
 
 const initialState: FormState = {
   step1: {
@@ -63,23 +74,41 @@ const initialState: FormState = {
   applicationId: null,
   ghlContactId: null, // Track GHL contact ID
   ghlOpportunityId: null, // Track GHL opportunity ID
+  lastError: null
 };
 
 interface FormActions {
-  updateStep1: (data: Partial<FormState['step1']>) => void;
-  updateStep2: (data: Partial<FormState['step2']>) => void;
-  updateStep3: (data: Partial<FormState['step3']>) => void;
-  updateStep4: (data: Partial<FormState['step4']>) => void;
-  updateStep5: (data: Partial<FormState['step5']>) => void;
-  updateStep6: (data: Partial<FormState['step6']>) => void;
+  // Update functions with auto-save
+  updateStep1: (data: Partial<FormState['step1']>) => Promise<void>;
+  updateStep2: (data: Partial<FormState['step2']>) => Promise<void>;
+  updateStep3: (data: Partial<FormState['step3']>) => Promise<void>;
+  updateStep4: (data: Partial<FormState['step4']>) => Promise<void>;
+  updateStep5: (data: Partial<FormState['step5']>) => Promise<void>;
+  updateStep6: (data: Partial<FormState['step6']>) => Promise<void>;
+  
+  // Multi-applicant specific functions for Steps 3 & 4
+  updateStep3ForApplicant: (applicantIndex: number, data: Record<string, unknown>) => Promise<void>;
+  updateStep4ForApplicant: (applicantIndex: number, data: Record<string, unknown>) => Promise<void>;
+  
+  // Navigation and state management
   setCurrentStep: (step: number) => void;
   setApplicationId: (id: string) => void;
-  setGhlContactId: (id: string) => void; // Add GHL contact ID setter
-  setGhlOpportunityId: (id: string) => void; // Add GHL opportunity ID setter
+  setGhlContactId: (id: string) => void;
+  setGhlOpportunityId: (id: string) => void;
   nextStep: () => void;
   previousStep: () => void;
   resetForm: () => void;
   getProgress: () => number;
+  
+  // Database operations
+  createNewApplication: (ghlContactId?: string) => Promise<string | null>;
+  loadApplication: (applicationId: string) => Promise<boolean>;
+  saveCurrentProgress: () => Promise<void>;
+  
+  // Error handling
+  lastError?: string | null;
+  setError: (error: string | null) => void;
+  clearError: () => void;
 }
 
 export const useFormStore = create<FormState & FormActions>()(
@@ -87,35 +116,120 @@ export const useFormStore = create<FormState & FormActions>()(
     (set, get) => ({
       ...initialState,
 
-      updateStep1: (data) =>
+      updateStep1: async (data) => {
+        // Update local state first
         set((state) => ({
           step1: { ...state.step1, ...data },
-        })),
+          lastError: null,
+        }));
 
-      updateStep2: (data) =>
+        // Sync to database
+        const state = get();
+        if (state.applicationId) {
+          const success = await saveStep1Data(state.applicationId, { ...state.step1, ...data });
+          if (!success) {
+            set({ lastError: 'Failed to save Step 1 data to database' });
+          }
+        }
+      },
+
+      updateStep2: async (data) => {
+        // Update local state first
         set((state) => ({
           step2: { ...state.step2, ...data },
-        })),
+          lastError: null,
+        }));
 
-      updateStep3: (data) =>
+        // Sync to database
+        const state = get();
+        if (state.applicationId) {
+          const success = await saveStep2Data(state.applicationId, { ...state.step2, ...data });
+          if (!success) {
+            set({ lastError: 'Failed to save Step 2 data to database' });
+          }
+        }
+      },
+
+      updateStep3: async (data) => {
+        // Update local state first
         set((state) => ({
           step3: { ...state.step3, ...data },
-        })),
+          lastError: null,
+        }));
 
-      updateStep4: (data) =>
+        // Note: Step 3 uses applicant-specific saving via updateStep3ForApplicant
+      },
+
+      updateStep4: async (data) => {
+        // Update local state first
         set((state) => ({
           step4: { ...state.step4, ...data },
-        })),
+          lastError: null,
+        }));
 
-      updateStep5: (data) =>
+        // Note: Step 4 uses applicant-specific saving via updateStep4ForApplicant
+      },
+
+      updateStep5: async (data) => {
+        // Update local state first
         set((state) => ({
           step5: { ...state.step5, ...data },
-        })),
+          lastError: null,
+        }));
 
-      updateStep6: (data) =>
+        // Sync to database
+        const state = get();
+        if (state.applicationId) {
+          const success = await saveStep5Data(state.applicationId, { ...state.step5, ...data });
+          if (!success) {
+            set({ lastError: 'Failed to save Step 5 data to database' });
+          }
+        }
+      },
+
+      updateStep6: async (data) => {
+        // Update local state first
         set((state) => ({
           step6: { ...state.step6, ...data },
-        })),
+          lastError: null,
+        }));
+
+        // Sync to database
+        const state = get();
+        if (state.applicationId) {
+          const success = await saveStep6Data(state.applicationId, { ...state.step6, ...data });
+          if (!success) {
+            set({ lastError: 'Failed to save Step 6 data to database' });
+          }
+        }
+      },
+
+      // Multi-applicant specific functions
+      updateStep3ForApplicant: async (applicantIndex: number, data: Record<string, unknown>) => {
+        const state = get();
+        if (state.applicationId) {
+          const applicantOrder = applicantIndex + 1; // Convert 0-based index to 1-based order
+          const success = await saveStep3Data(state.applicationId, applicantOrder, data);
+          if (!success) {
+            set({ lastError: `Failed to save Step 3 data for applicant ${applicantOrder}` });
+          } else {
+            set({ lastError: null });
+          }
+        }
+      },
+
+      updateStep4ForApplicant: async (applicantIndex: number, data: Record<string, unknown>) => {
+        const state = get();
+        if (state.applicationId) {
+          const applicantOrder = applicantIndex + 1; // Convert 0-based index to 1-based order
+          const success = await saveStep4Data(state.applicationId, applicantOrder, data);
+          if (!success) {
+            set({ lastError: `Failed to save Step 4 data for applicant ${applicantOrder}` });
+          } else {
+            set({ lastError: null });
+          }
+        }
+      },
 
       setCurrentStep: (step) => set({ currentStep: step }),
 
@@ -149,6 +263,65 @@ export const useFormStore = create<FormState & FormActions>()(
         };
         return progressMap[step] || 0;
       },
+
+      // Database operations
+      createNewApplication: async (ghlContactId?: string) => {
+        try {
+          const application = await createApplication();
+          if (application) {
+            set({ 
+              applicationId: application.id, 
+              ghlContactId: ghlContactId || null,
+              lastError: null 
+            });
+            return application.id;
+          } else {
+            set({ lastError: 'Failed to create new application' });
+            return null;
+          }
+        } catch (error) {
+          console.error('Error creating application:', error);
+          set({ lastError: 'Failed to create new application' });
+          return null;
+        }
+      },
+
+      loadApplication: async (applicationId: string) => {
+        try {
+          const dbData = await loadApplicationData(applicationId);
+          if (dbData) {
+            const formState = transformDatabaseToFormState(dbData);
+            if (formState) {
+              // Update all form state from database
+              set({
+                ...formState,
+                lastError: null,
+              });
+              return true;
+            }
+          }
+          set({ lastError: 'Failed to load application data' });
+          return false;
+        } catch (error) {
+          console.error('Error loading application:', error);
+          set({ lastError: 'Failed to load application data' });
+          return false;
+        }
+      },
+
+      saveCurrentProgress: async () => {
+        const state = get();
+        if (state.applicationId) {
+          // This would save the entire current state as progress
+          // Implementation depends on how you want to track progress
+          console.log('Saving current progress for application:', state.applicationId);
+        }
+      },
+
+      // Error handling
+      setError: (error: string | null) => set({ lastError: error }),
+      
+      clearError: () => set({ lastError: null }),
     }),
     {
       name: 'aip-form-storage',
@@ -164,6 +337,7 @@ export const useFormStore = create<FormState & FormActions>()(
         applicationId: state.applicationId,
         ghlContactId: state.ghlContactId,
         ghlOpportunityId: state.ghlOpportunityId,
+        lastError: state.lastError,
       }),
     }
   )
