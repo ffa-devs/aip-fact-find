@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/dialog'
 import { Loader2, Mail } from 'lucide-react'
 import { toast } from 'sonner'
-import { checkExistingApplication, sendVerificationMessage } from '@/lib/services/application-service'
+import { checkExistingApplication, sendVerificationMessage, validateVerificationCode } from '@/lib/services/application-service'
 
 interface RetrieveApplicationDialogProps {
   open: boolean
@@ -30,7 +30,6 @@ export function RetrieveApplicationDialog({
   const [verificationCode, setVerificationCode] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [step, setStep] = useState<'email' | 'verification'>('email')
-  const [foundApplicationId, setFoundApplicationId] = useState<string | null>(null)
 
   const handleSubmitEmail = async () => {
     if (!email.trim()) {
@@ -44,8 +43,7 @@ export function RetrieveApplicationDialog({
       
       if (result.exists && result.applicationId) {
         // Send verification message via GHL
-        await sendVerificationMessage(result.contactId!)
-        setFoundApplicationId(result.applicationId)
+        await sendVerificationMessage(result.contactId!, email, result.applicationId)
         setStep('verification')
         toast.success('Verification email sent!')
       } else {
@@ -59,17 +57,28 @@ export function RetrieveApplicationDialog({
     }
   }
 
-  const handleSubmitCode = () => {
+  const handleSubmitCode = async () => {
     if (!verificationCode.trim()) {
       toast.error('Please enter the verification code')
       return
     }
 
-    // In a real implementation, you would verify the code here
-    // For now, we'll just proceed if a code is entered
-    if (foundApplicationId) {
-      onApplicationRetrieved(foundApplicationId)
-      handleClose()
+    setIsLoading(true)
+    try {
+      const result = await validateVerificationCode(email, verificationCode)
+      
+      if (result.valid && result.applicationId) {
+        toast.success('Code verified! Loading your application...')
+        onApplicationRetrieved(result.applicationId)
+        handleClose()
+      } else {
+        toast.error(result.error || 'Invalid verification code')
+      }
+    } catch (error) {
+      console.error('Error validating verification code:', error)
+      toast.error('Failed to validate code. Please try again.')
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -77,7 +86,6 @@ export function RetrieveApplicationDialog({
     setEmail('')
     setVerificationCode('')
     setStep('email')
-    setFoundApplicationId(null)
     onOpenChange(false)
   }
 
@@ -158,10 +166,17 @@ export function RetrieveApplicationDialog({
                 </Button>
                 <Button 
                   onClick={handleSubmitCode}
-                  disabled={!verificationCode.trim()}
+                  disabled={isLoading || !verificationCode.trim()}
                   className="flex-1"
                 >
-                  Retrieve Application
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Verifying...
+                    </>
+                  ) : (
+                    'Retrieve Application'
+                  )}
                 </Button>
               </div>
             </>

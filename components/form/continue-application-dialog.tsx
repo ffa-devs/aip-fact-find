@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/dialog'
 import { Loader2, Mail, RotateCcw } from 'lucide-react'
 import { toast } from 'sonner'
-import { checkExistingApplication, sendVerificationMessage } from '@/lib/services/application-service'
+import { checkExistingApplication, sendVerificationMessage, validateVerificationCode } from '@/lib/services/application-service'
 import { useFormStore } from '@/lib/store/form-store'
 
 export function ContinueApplicationDialog() {
@@ -23,7 +23,6 @@ export function ContinueApplicationDialog() {
   const [verificationCode, setVerificationCode] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [emailSent, setEmailSent] = useState(false)
-  const [foundApplicationId, setFoundApplicationId] = useState<string | null>(null)
   
   const { setApplicationId, loadApplication } = useFormStore()
 
@@ -39,11 +38,10 @@ export function ContinueApplicationDialog() {
       
       // Always show the email sent message for security
       setEmailSent(true)
-      setFoundApplicationId(result.exists ? result.applicationId! : null)
       
       if (result.exists && result.applicationId) {
         // Send verification message via GHL
-        await sendVerificationMessage(result.contactId!)
+        await sendVerificationMessage(result.contactId!, email, result.applicationId)
       }
       
     } catch (error) {
@@ -62,13 +60,12 @@ export function ContinueApplicationDialog() {
 
     setIsLoading(true)
     try {
-      // In a real implementation, you'd verify the code with the backend
-      // For now, we'll simulate verification
+      const result = await validateVerificationCode(email, verificationCode)
       
-      if (foundApplicationId) {
+      if (result.valid && result.applicationId) {
         // Load the existing application
-        setApplicationId(foundApplicationId)
-        const success = await loadApplication(foundApplicationId)
+        setApplicationId(result.applicationId)
+        const success = await loadApplication(result.applicationId)
         
         if (success) {
           toast.success('Application loaded successfully!')
@@ -78,12 +75,11 @@ export function ContinueApplicationDialog() {
           toast.error('Failed to load application. Please try again.')
         }
       } else {
-        // No application found, but don't reveal this for security
-        toast.error('Invalid verification code. Please try again or start a new application.')
+        toast.error(result.error || 'Invalid verification code')
       }
     } catch (error) {
-      console.error('Error loading application:', error)
-      toast.error('Failed to load application. Please try again.')
+      console.error('Error validating verification code:', error)
+      toast.error('Failed to validate code. Please try again.')
     } finally {
       setIsLoading(false)
     }
@@ -93,7 +89,6 @@ export function ContinueApplicationDialog() {
     setEmail('')
     setVerificationCode('')
     setEmailSent(false)
-    setFoundApplicationId(null)
   }
 
   const handleOpenChange = (open: boolean) => {
