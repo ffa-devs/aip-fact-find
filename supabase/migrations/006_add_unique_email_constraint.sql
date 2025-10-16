@@ -33,7 +33,7 @@ $$;
 ALTER TABLE applicants ADD CONSTRAINT unique_applicant_email UNIQUE (email);
 
 -- Create an index to improve performance of email lookups
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_applicants_email ON applicants(email) WHERE email IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_applicants_email ON applicants(email) WHERE email IS NOT NULL;
 
 -- Add comment to document the constraint
 COMMENT ON CONSTRAINT unique_applicant_email ON applicants IS 'Ensures no duplicate email addresses across all applications';

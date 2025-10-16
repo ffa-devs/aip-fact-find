@@ -183,7 +183,7 @@ export function Step2AboutYou({ onNext }: Step2Props) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit, onError)} className="space-y-6">
+      <form className="space-y-6">
         <div className="space-y-4">
 
           <FormField

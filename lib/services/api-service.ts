@@ -276,3 +276,167 @@ export async function deleteCoApplicant(coApplicantId: string): Promise<ApiRespo
     return { error: 'Network error - please check your connection' };
   }
 }
+
+/**
+ * Save Step 3 data
+ */
+export async function saveStep3Data(applicationId: string, step3Data: Record<string, unknown>): Promise<ApiResponse> {
+  try {
+    const response = await fetch('/api/applications/step3', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ applicationId, ...step3Data }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      return { error: errorData.error, details: errorData.details };
+    }
+
+    const data = await response.json();
+    return { data };
+  } catch (error) {
+    console.error('Error saving Step 3 data:', error);
+    return { error: 'Network error - please check your connection' };
+  }
+}
+
+/**
+ * Save Step 4 data
+ */
+export async function saveStep4Data(applicationId: string, step4Data: Record<string, unknown>): Promise<ApiResponse> {
+  try {
+    const response = await fetch('/api/applications/step4', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ applicationId, ...step4Data }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      return { error: errorData.error, details: errorData.details };
+    }
+
+    const data = await response.json();
+    return { data };
+  } catch (error) {
+    console.error('Error saving Step 4 data:', error);
+    return { error: 'Network error - please check your connection' };
+  }
+}
+
+/**
+ * Save Step 5 data
+ */
+export async function saveStep5Data(applicationId: string, step5Data: Record<string, unknown>): Promise<ApiResponse> {
+  try {
+    const response = await fetch('/api/applications/step5', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ applicationId, ...step5Data }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      return { error: errorData.error, details: errorData.details };
+    }
+
+    const data = await response.json();
+    return { data };
+  } catch (error) {
+    console.error('Error saving Step 5 data:', error);
+    return { error: 'Network error - please check your connection' };
+  }
+}
+
+/**
+ * Save Step 6 data
+ */
+export async function saveStep6Data(applicationId: string, step6Data: Record<string, unknown>): Promise<ApiResponse> {
+  try {
+    const response = await fetch('/api/applications/step6', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ applicationId, ...step6Data }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      return { error: errorData.error, details: errorData.details };
+    }
+
+    const data = await response.json();
+    return { data };
+  } catch (error) {
+    console.error('Error saving Step 6 data:', error);
+    return { error: 'Network error - please check your connection' };
+  }
+}
+
+/**
+ * Save Step 3 data for a specific applicant
+ */
+export async function saveApplicantStep3Data(
+  applicationId: string, 
+  applicantIndex: number, 
+  step3Data: Record<string, unknown>
+): Promise<ApiResponse> {
+  try {
+    const response = await fetch('/api/applications/applicant-step3', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ applicationId, applicantIndex, ...step3Data }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      return { error: errorData.error, details: errorData.details };
+    }
+
+    const data = await response.json();
+    return { data };
+  } catch (error) {
+    console.error('Error saving applicant Step 3 data:', error);
+    return { error: 'Network error - please check your connection' };
+  }
+}
+
+/**
+ * Save Step 4 data for a specific applicant
+ */
+export async function saveApplicantStep4Data(
+  applicationId: string, 
+  applicantIndex: number, 
+  step4Data: Record<string, unknown>
+): Promise<ApiResponse> {
+  try {
+    const response = await fetch('/api/applications/applicant-step4', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ applicationId, applicantIndex, ...step4Data }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      return { error: errorData.error, details: errorData.details };
+    }
+
+    const data = await response.json();
+    return { data };
+  } catch (error) {
+    console.error('Error saving applicant Step 4 data:', error);
+    return { error: 'Network error - please check your connection' };
+  }
+}

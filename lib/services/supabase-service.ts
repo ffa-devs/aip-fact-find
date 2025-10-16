@@ -889,6 +889,124 @@ export async function deleteApplication(applicationId: string): Promise<boolean>
 }
 
 /**
+ * Update Step 3 data for the entire application
+ */
+export async function updateApplicationStep3(
+  applicationId: string,
+  step3Data: FormState['step3']
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Save Step 3 data for primary applicant (order 1)
+    const primarySuccess = await saveStep3Data(applicationId, 1, step3Data);
+    
+    if (!primarySuccess) {
+      return { success: false, error: 'Failed to save primary applicant Step 3 data' };
+    }
+
+    // Save Step 3 data for co-applicants if they exist
+    if (step3Data.co_applicants && step3Data.co_applicants.length > 0) {
+      for (let i = 0; i < step3Data.co_applicants.length; i++) {
+        const coApplicantData = step3Data.co_applicants[i];
+        const success = await saveStep3Data(applicationId, i + 2, coApplicantData); // Order starts at 2
+        
+        if (!success) {
+          return { success: false, error: `Failed to save co-applicant ${i + 1} Step 3 data` };
+        }
+      }
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error in updateApplicationStep3:', error);
+    return { success: false, error: 'Internal server error' };
+  }
+}
+
+/**
+ * Update Step 4 data for the entire application
+ */
+export async function updateApplicationStep4(
+  applicationId: string,
+  step4Data: FormState['step4']
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Save Step 4 data for primary applicant (order 1)
+    const primarySuccess = await saveStep4Data(applicationId, 1, {
+      employment_status: step4Data.employment_status,
+      ...step4Data.employment_details,
+      ...step4Data.financial_commitments,
+    });
+    
+    if (!primarySuccess) {
+      return { success: false, error: 'Failed to save primary applicant Step 4 data' };
+    }
+
+    // Save Step 4 data for co-applicants if they exist
+    if (step4Data.co_applicants && step4Data.co_applicants.length > 0) {
+      for (let i = 0; i < step4Data.co_applicants.length; i++) {
+        const coApplicantData = step4Data.co_applicants[i];
+        const success = await saveStep4Data(applicationId, i + 2, { // Order starts at 2
+          employment_status: coApplicantData.employment_status,
+          ...coApplicantData.employment_details,
+          ...coApplicantData.financial_commitments,
+        });
+        
+        if (!success) {
+          return { success: false, error: `Failed to save co-applicant ${i + 1} Step 4 data` };
+        }
+      }
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error in updateApplicationStep4:', error);
+    return { success: false, error: 'Internal server error' };
+  }
+}
+
+/**
+ * Update Step 5 data for the entire application
+ */
+export async function updateApplicationStep5(
+  applicationId: string,
+  step5Data: FormState['step5']
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const success = await saveStep5Data(applicationId, step5Data);
+    
+    if (!success) {
+      return { success: false, error: 'Failed to save Step 5 data' };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error in updateApplicationStep5:', error);
+    return { success: false, error: 'Internal server error' };
+  }
+}
+
+/**
+ * Update Step 6 data for the entire application
+ */
+export async function updateApplicationStep6(
+  applicationId: string,
+  step6Data: FormState['step6']
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const success = await saveStep6Data(applicationId, step6Data);
+    
+    if (!success) {
+      return { success: false, error: 'Failed to save Step 6 data' };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error in updateApplicationStep6:', error);
+    return { success: false, error: 'Internal server error' };
+  }
+}
+
+/**
  * Transform Supabase application data back to FormState format
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

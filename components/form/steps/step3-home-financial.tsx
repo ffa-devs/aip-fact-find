@@ -192,7 +192,7 @@ export function Step3HomeFinancial({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit, onError)} className="space-y-6">
+      <form className="space-y-6">
         <div className="space-y-6">
           <div>
             <h2 className="text-2xl font-bold">Your Home & Financial Position</h2>

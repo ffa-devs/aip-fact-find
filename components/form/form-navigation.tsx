@@ -67,7 +67,7 @@ export function FormNavigation({
         )}
         
         <Button 
-          type="submit" 
+          type="button" 
           size="lg" 
           disabled={isSubmitting}
           onClick={onNext}

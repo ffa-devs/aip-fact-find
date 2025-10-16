@@ -5,6 +5,12 @@ import {
   createApplication,
   saveStep1Data,
   saveStep2Data,
+  saveStep3Data,
+  saveStep4Data,
+  saveStep5Data,
+  saveStep6Data,
+  saveApplicantStep3Data,
+  saveApplicantStep4Data,
   loadApplicationData,
 } from '@/lib/services/api-service';
 import { transformDatabaseToFormState } from '@/lib/services/supabase-service';
@@ -158,7 +164,14 @@ export const useFormStore = create<FormState & FormActions>()(
           lastError: null,
         }));
 
-        // TODO: Implement Step 3 API route
+        // Sync to database
+        const state = get();
+        if (state.applicationId) {
+          const result = await saveStep3Data(state.applicationId, { ...state.step3, ...data });
+          if (result.error) {
+            set({ lastError: result.error });
+          }
+        }
       },
 
       updateStep4: async (data) => {
@@ -168,7 +181,14 @@ export const useFormStore = create<FormState & FormActions>()(
           lastError: null,
         }));
 
-        // TODO: Implement Step 4 API route
+        // Sync to database
+        const state = get();
+        if (state.applicationId) {
+          const result = await saveStep4Data(state.applicationId, { ...state.step4, ...data });
+          if (result.error) {
+            set({ lastError: result.error });
+          }
+        }
       },
 
       updateStep5: async (data) => {
@@ -178,7 +198,14 @@ export const useFormStore = create<FormState & FormActions>()(
           lastError: null,
         }));
 
-        // TODO: Implement Step 5 API route
+        // Sync to database
+        const state = get();
+        if (state.applicationId) {
+          const result = await saveStep5Data(state.applicationId, { ...state.step5, ...data });
+          if (result.error) {
+            set({ lastError: result.error });
+          }
+        }
       },
 
       updateStep6: async (data) => {
@@ -188,18 +215,37 @@ export const useFormStore = create<FormState & FormActions>()(
           lastError: null,
         }));
 
-        // TODO: Implement Step 6 API route
+        // Sync to database
+        const state = get();
+        if (state.applicationId) {
+          const result = await saveStep6Data(state.applicationId, { ...state.step6, ...data });
+          if (result.error) {
+            set({ lastError: result.error });
+          }
+        }
       },
 
             // Multi-applicant specific functions
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       updateStep3ForApplicant: async (applicantIndex: number, data: Record<string, unknown>) => {
-        // TODO: Implement Step 3 applicant-specific API route
+        // Sync to database
+        const state = get();
+        if (state.applicationId) {
+          const result = await saveApplicantStep3Data(state.applicationId, applicantIndex, data);
+          if (result.error) {
+            set({ lastError: result.error });
+          }
+        }
       },
 
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       updateStep4ForApplicant: async (applicantIndex: number, data: Record<string, unknown>) => {
-        // TODO: Implement Step 4 applicant-specific API route
+        // Sync to database
+        const state = get();
+        if (state.applicationId) {
+          const result = await saveApplicantStep4Data(state.applicationId, applicantIndex, data);
+          if (result.error) {
+            set({ lastError: result.error });
+          }
+        }
       },
 
       setCurrentStep: (step) => set({ currentStep: step }),

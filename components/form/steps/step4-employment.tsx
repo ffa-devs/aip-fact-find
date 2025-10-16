@@ -166,7 +166,7 @@ export function Step4Employment({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit, onError)} className="space-y-6">
+      <form className="space-y-6">
         <div className="space-y-4">
           <div>
             <h2 className="text-2xl font-bold">Employment & Income</h2>
