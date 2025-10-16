@@ -19,7 +19,7 @@ INSERT INTO people (
   updated_at
 )
 SELECT 
-  gen_random_uuid(),
+  id, -- Preserve the original applicant ID
   LOWER(email), -- Ensure email is lowercase
   first_name,
   last_name,
@@ -27,18 +27,10 @@ SELECT
   telephone,
   mobile,
   nationality,
-  MIN(created_at), -- Use earliest created_at if duplicate emails exist
+  created_at,
   NOW()
 FROM applicants
 WHERE applicant_order = 1 -- Only primary applicants for now
-GROUP BY 
-  LOWER(email),
-  first_name,
-  last_name,
-  date_of_birth,
-  telephone,
-  mobile,
-  nationality
 ON CONFLICT (email) DO NOTHING; -- Skip if email already exists
 
 -- Now create application_participants records for primary applicants
@@ -67,9 +59,9 @@ INSERT INTO application_participants (
   updated_at
 )
 SELECT 
-  a.id, -- Use applicant id as participant id for now
+  gen_random_uuid(), -- Generate new UUID for participant
   a.application_id,
-  p.id, -- Person ID from people table
+  a.id, -- Use applicant ID directly as person_id since we preserved it in people table
   'primary',
   1, -- Primary applicant is always order 1
   a.marital_status,
@@ -90,7 +82,6 @@ SELECT
   a.created_at,
   a.updated_at
 FROM applicants a
-JOIN people p ON LOWER(p.email) = LOWER(a.email)
 WHERE a.applicant_order = 1; -- Only primary applicants
 
 -- =====================================================
@@ -215,7 +206,7 @@ BEGIN
       temp_old_applicant_id = applicant_id,
       participant_id = ap.id
     FROM application_participants ap
-    WHERE employment_details.applicant_id = ap.applicant_id;
+    WHERE employment_details.applicant_id = ap.person_id;
     
     RAISE NOTICE 'Updated employment_details to use participant_id';
   END IF;
@@ -241,7 +232,7 @@ BEGIN
       temp_old_applicant_id = applicant_id,
       participant_id = ap.id
     FROM application_participants ap
-    WHERE financial_commitments.applicant_id = ap.applicant_id;
+    WHERE financial_commitments.applicant_id = ap.person_id;
     
     RAISE NOTICE 'Updated financial_commitments to use participant_id';
   END IF;
@@ -267,7 +258,7 @@ BEGIN
       temp_old_applicant_id = applicant_id,
       participant_id = ap.id
     FROM application_participants ap
-    WHERE rental_properties.applicant_id = ap.applicant_id;
+    WHERE rental_properties.applicant_id = ap.person_id;
     
     RAISE NOTICE 'Updated rental_properties to use participant_id';
   END IF;
