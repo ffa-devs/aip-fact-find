@@ -40,20 +40,45 @@ COMMENT ON TABLE co_applicants IS 'DEPRECATED: Legacy co-applicants table. Data 
 CREATE INDEX IF NOT EXISTS idx_application_participants_lookup 
 ON application_participants(application_id, participant_role, participant_order);
 
-CREATE INDEX IF NOT EXISTS idx_employment_details_participant 
-ON employment_details(participant_id);
+-- Only create indexes for tables that have participant_id column (added in migration 008)
+DO $$
+BEGIN
+  -- Index for employment_details if it has participant_id
+  IF EXISTS (SELECT 1 FROM information_schema.columns 
+             WHERE table_name = 'employment_details' AND column_name = 'participant_id') THEN
+    CREATE INDEX IF NOT EXISTS idx_employment_details_participant 
+    ON employment_details(participant_id);
+  END IF;
 
-CREATE INDEX IF NOT EXISTS idx_financial_commitments_participant 
-ON financial_commitments(participant_id);
+  -- Index for financial_commitments if it has participant_id
+  IF EXISTS (SELECT 1 FROM information_schema.columns 
+             WHERE table_name = 'financial_commitments' AND column_name = 'participant_id') THEN
+    CREATE INDEX IF NOT EXISTS idx_financial_commitments_participant 
+    ON financial_commitments(participant_id);
+  END IF;
 
-CREATE INDEX IF NOT EXISTS idx_rental_properties_participant 
-ON rental_properties(participant_id);
+  -- Index for rental_properties if it has participant_id
+  IF EXISTS (SELECT 1 FROM information_schema.columns 
+             WHERE table_name = 'rental_properties' AND column_name = 'participant_id') THEN
+    CREATE INDEX IF NOT EXISTS idx_rental_properties_participant 
+    ON rental_properties(participant_id);
+  END IF;
 
-CREATE INDEX IF NOT EXISTS idx_additional_assets_participant 
-ON additional_assets(participant_id);
+  -- Index for additional_assets if it has participant_id
+  IF EXISTS (SELECT 1 FROM information_schema.columns 
+             WHERE table_name = 'additional_assets' AND column_name = 'participant_id') THEN
+    CREATE INDEX IF NOT EXISTS idx_additional_assets_participant 
+    ON additional_assets(participant_id);
+  END IF;
 
-CREATE INDEX IF NOT EXISTS idx_applicant_children_participant 
-ON applicant_children(participant_id);
+  -- Index for applicant_children if it has participant_id
+  IF EXISTS (SELECT 1 FROM information_schema.columns 
+             WHERE table_name = 'applicant_children' AND column_name = 'participant_id') THEN
+    CREATE INDEX IF NOT EXISTS idx_applicant_children_participant 
+    ON applicant_children(participant_id);
+  END IF;
+
+END $$;
 
 -- =====================================================
 -- 5. VALIDATION QUERIES (For manual verification)

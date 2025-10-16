@@ -293,6 +293,58 @@ BEGIN
   END IF;
 END $$;
 
+-- =====================================================
+-- 6. MIGRATE ADDITIONAL ASSETS (IF TABLE EXISTS)
+-- =====================================================
+
+DO $$
+BEGIN
+  -- Check if additional_assets table exists and has applicant_id
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'additional_assets')
+     AND EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name = 'additional_assets' AND column_name = 'applicant_id') THEN
+    
+    -- Add temporary column to track migration
+    ALTER TABLE additional_assets ADD COLUMN IF NOT EXISTS temp_old_applicant_id UUID;
+    
+    -- Update to reference participants using participant_id
+    UPDATE additional_assets 
+    SET 
+      temp_old_applicant_id = applicant_id,
+      participant_id = ap.id
+    FROM application_participants ap
+    WHERE additional_assets.applicant_id = ap.person_id;
+    
+    RAISE NOTICE 'Updated additional_assets to use participant_id';
+  END IF;
+END $$;
+
+-- =====================================================
+-- 7. MIGRATE APPLICANT CHILDREN (IF TABLE EXISTS)
+-- =====================================================
+
+DO $$
+BEGIN
+  -- Check if applicant_children table exists and has applicant_id
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'applicant_children')
+     AND EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name = 'applicant_children' AND column_name = 'applicant_id') THEN
+    
+    -- Add temporary column to track migration
+    ALTER TABLE applicant_children ADD COLUMN IF NOT EXISTS temp_old_applicant_id UUID;
+    
+    -- Update to reference participants using participant_id
+    UPDATE applicant_children 
+    SET 
+      temp_old_applicant_id = applicant_id,
+      participant_id = ap.id
+    FROM application_participants ap
+    WHERE applicant_children.applicant_id = ap.person_id;
+    
+    RAISE NOTICE 'Updated applicant_children to use participant_id';
+  END IF;
+END $$;
+
 -- Create temporary backup tables for safety
 CREATE TABLE applicants_backup AS SELECT * FROM applicants;
 CREATE TABLE co_applicants_backup AS SELECT * FROM co_applicants;

@@ -131,6 +131,42 @@ BEGIN
   END IF;
 END $$;
 
+-- Update additional_assets table if it exists
+DO $$ 
+BEGIN
+  -- Add participant_id column if it doesn't exist
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name = 'additional_assets' AND column_name = 'participant_id') THEN
+    ALTER TABLE additional_assets ADD COLUMN participant_id UUID;
+  END IF;
+  
+  -- Add foreign key constraint if it doesn't exist
+  IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints 
+                 WHERE constraint_name = 'fk_assets_participant_id') THEN
+    ALTER TABLE additional_assets 
+    ADD CONSTRAINT fk_assets_participant_id 
+    FOREIGN KEY (participant_id) REFERENCES application_participants(id) ON DELETE CASCADE;
+  END IF;
+END $$;
+
+-- Update applicant_children table if it exists
+DO $$ 
+BEGIN
+  -- Add participant_id column if it doesn't exist
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name = 'applicant_children' AND column_name = 'participant_id') THEN
+    ALTER TABLE applicant_children ADD COLUMN participant_id UUID;
+  END IF;
+  
+  -- Add foreign key constraint if it doesn't exist
+  IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints 
+                 WHERE constraint_name = 'fk_children_participant_id') THEN
+    ALTER TABLE applicant_children 
+    ADD CONSTRAINT fk_children_participant_id 
+    FOREIGN KEY (participant_id) REFERENCES application_participants(id) ON DELETE CASCADE;
+  END IF;
+END $$;
+
 -- =====================================================
 -- 6. INDEXES FOR PERFORMANCE
 -- =====================================================
