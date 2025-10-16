@@ -196,63 +196,82 @@ FROM co_applicants ca
 JOIN people p ON LOWER(p.email) = LOWER(ca.email);
 
 -- =====================================================
--- 3. MIGRATE EMPLOYMENT DETAILS
+-- 3. MIGRATE EMPLOYMENT DETAILS (IF TABLE EXISTS)
 -- =====================================================
 
--- Update employment_details table to reference participants instead of applicants
--- Note: This assumes employment_details table exists and has applicant_id field
-
--- First, add temporary column to track migration
-ALTER TABLE employment_details ADD COLUMN IF NOT EXISTS temp_old_applicant_id UUID;
-
--- Update employment_details to reference application_participants
-UPDATE employment_details 
-SET 
-  temp_old_applicant_id = applicant_id,
-  applicant_id = ap.id
-FROM application_participants ap
-WHERE employment_details.applicant_id = ap.id
-  AND ap.participant_role = 'primary';
-
--- Rename column to match new schema
-ALTER TABLE employment_details RENAME COLUMN applicant_id TO participant_id;
-
--- =====================================================
--- 4. MIGRATE FINANCIAL COMMITMENTS
--- =====================================================
-
--- Similar process for financial commitments if they exist
--- Add temporary column
-ALTER TABLE financial_commitments ADD COLUMN IF NOT EXISTS temp_old_applicant_id UUID;
-
--- Update to reference participants
-UPDATE financial_commitments 
-SET 
-  temp_old_applicant_id = applicant_id,
-  applicant_id = ap.id
-FROM application_participants ap
-WHERE financial_commitments.applicant_id = ap.id
-  AND ap.participant_role = 'primary';
-
--- Rename column
-ALTER TABLE financial_commitments RENAME COLUMN applicant_id TO participant_id;
+DO $$
+BEGIN
+  -- Check if employment_details table exists and has applicant_id
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'employment_details') 
+     AND EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name = 'employment_details' AND column_name = 'applicant_id') THEN
+    
+    -- Add temporary column to track migration
+    ALTER TABLE employment_details ADD COLUMN IF NOT EXISTS temp_old_applicant_id UUID;
+    
+    -- Update employment_details to reference application_participants using participant_id
+    UPDATE employment_details 
+    SET 
+      temp_old_applicant_id = applicant_id,
+      participant_id = ap.id
+    FROM application_participants ap
+    WHERE employment_details.applicant_id = ap.applicant_id;
+    
+    RAISE NOTICE 'Updated employment_details to use participant_id';
+  END IF;
+END $$;
 
 -- =====================================================
--- 5. MIGRATE RENTAL PROPERTIES
+-- 4. MIGRATE FINANCIAL COMMITMENTS (IF TABLE EXISTS)
 -- =====================================================
 
--- Similar process for rental properties
-ALTER TABLE rental_properties ADD COLUMN IF NOT EXISTS temp_old_applicant_id UUID;
+DO $$
+BEGIN
+  -- Check if financial_commitments table exists and has applicant_id
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'financial_commitments')
+     AND EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name = 'financial_commitments' AND column_name = 'applicant_id') THEN
+    
+    -- Add temporary column to track migration
+    ALTER TABLE financial_commitments ADD COLUMN IF NOT EXISTS temp_old_applicant_id UUID;
+    
+    -- Update to reference participants using participant_id
+    UPDATE financial_commitments 
+    SET 
+      temp_old_applicant_id = applicant_id,
+      participant_id = ap.id
+    FROM application_participants ap
+    WHERE financial_commitments.applicant_id = ap.applicant_id;
+    
+    RAISE NOTICE 'Updated financial_commitments to use participant_id';
+  END IF;
+END $$;
 
-UPDATE rental_properties 
-SET 
-  temp_old_applicant_id = applicant_id,
-  applicant_id = ap.id
-FROM application_participants ap
-WHERE rental_properties.applicant_id = ap.id
-  AND ap.participant_role = 'primary';
+-- =====================================================
+-- 5. MIGRATE RENTAL PROPERTIES (IF TABLE EXISTS)
+-- =====================================================
 
-ALTER TABLE rental_properties RENAME COLUMN applicant_id TO participant_id;
+DO $$
+BEGIN
+  -- Check if rental_properties table exists and has applicant_id
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'rental_properties')
+     AND EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name = 'rental_properties' AND column_name = 'applicant_id') THEN
+    
+    -- Add temporary column to track migration
+    ALTER TABLE rental_properties ADD COLUMN IF NOT EXISTS temp_old_applicant_id UUID;
+    
+    -- Update to reference participants using participant_id
+    UPDATE rental_properties 
+    SET 
+      temp_old_applicant_id = applicant_id,
+      participant_id = ap.id
+    FROM application_participants ap
+    WHERE rental_properties.applicant_id = ap.applicant_id;
+    
+    RAISE NOTICE 'Updated rental_properties to use participant_id';
+  END IF;
+END $$;
 
 -- =====================================================
 -- 6. VALIDATION QUERIES

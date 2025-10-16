@@ -74,78 +74,62 @@ CREATE TABLE IF NOT EXISTS application_participants (
 );
 
 -- =====================================================
--- 3. EMPLOYMENT_DETAILS TABLE (Updated to reference participants)
+-- 3. UPDATE EXISTING TABLES TO USE PARTICIPANT_ID
 -- =====================================================
-CREATE TABLE IF NOT EXISTS employment_details (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  participant_id UUID NOT NULL REFERENCES application_participants(id) ON DELETE CASCADE,
-  
-  -- Employment Information
-  employer_name VARCHAR(255),
-  job_title VARCHAR(255),
-  employment_type VARCHAR(50), -- permanent, contract, self_employed, etc.
-  annual_income DECIMAL(12, 2),
-  net_monthly_income DECIMAL(10, 2),
-  time_with_employer_years INTEGER,
-  time_with_employer_months INTEGER,
-  
-  -- Additional income
-  other_income_sources TEXT,
-  other_income_amount DECIMAL(10, 2),
-  
-  -- Previous employment (if current < 2 years)
-  previous_employer_name VARCHAR(255),
-  previous_job_title VARCHAR(255),
-  previous_employment_duration_years INTEGER,
-  previous_employment_duration_months INTEGER,
-  
-  -- Timestamps
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
 
--- =====================================================
--- 4. FINANCIAL_COMMITMENTS TABLE (Updated to reference participants)
--- =====================================================
-CREATE TABLE IF NOT EXISTS financial_commitments (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  participant_id UUID NOT NULL REFERENCES application_participants(id) ON DELETE CASCADE,
+-- Update employment_details table if it exists
+DO $$ 
+BEGIN
+  -- Add participant_id column if it doesn't exist
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name = 'employment_details' AND column_name = 'participant_id') THEN
+    ALTER TABLE employment_details ADD COLUMN participant_id UUID;
+  END IF;
   
-  -- Monthly commitments
-  personal_loans DECIMAL(10, 2) DEFAULT 0,
-  credit_card_debt DECIMAL(10, 2) DEFAULT 0,
-  car_loans_lease DECIMAL(10, 2) DEFAULT 0,
-  other_commitments DECIMAL(10, 2) DEFAULT 0,
-  total_monthly_commitments DECIMAL(10, 2),
-  
-  -- Legal issues
-  has_credit_or_legal_issues BOOLEAN DEFAULT FALSE,
-  credit_legal_issues_details TEXT,
-  
-  -- Timestamps
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+  -- Add foreign key constraint if it doesn't exist
+  IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints 
+                 WHERE constraint_name = 'fk_employment_participant_id') THEN
+    ALTER TABLE employment_details 
+    ADD CONSTRAINT fk_employment_participant_id 
+    FOREIGN KEY (participant_id) REFERENCES application_participants(id) ON DELETE CASCADE;
+  END IF;
+END $$;
 
--- =====================================================
--- 5. RENTAL_PROPERTIES TABLE (Updated to reference participants)
--- =====================================================
-CREATE TABLE IF NOT EXISTS rental_properties (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  participant_id UUID NOT NULL REFERENCES application_participants(id) ON DELETE CASCADE,
+-- Update financial_commitments table if it exists  
+DO $$
+BEGIN
+  -- Add participant_id column if it doesn't exist
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name = 'financial_commitments' AND column_name = 'participant_id') THEN
+    ALTER TABLE financial_commitments ADD COLUMN participant_id UUID;
+  END IF;
   
-  -- Property details
-  property_address TEXT NOT NULL,
-  purchase_price DECIMAL(12, 2),
-  current_value DECIMAL(12, 2),
-  monthly_rental_income DECIMAL(10, 2),
-  mortgage_outstanding DECIMAL(12, 2),
-  monthly_mortgage_payment DECIMAL(10, 2),
+  -- Add foreign key constraint if it doesn't exist
+  IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints 
+                 WHERE constraint_name = 'fk_financial_participant_id') THEN
+    ALTER TABLE financial_commitments 
+    ADD CONSTRAINT fk_financial_participant_id 
+    FOREIGN KEY (participant_id) REFERENCES application_participants(id) ON DELETE CASCADE;
+  END IF;
+END $$;
+
+-- Update rental_properties table if it exists
+DO $$
+BEGIN
+  -- Add participant_id column if it doesn't exist
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name = 'rental_properties' AND column_name = 'participant_id') THEN
+    ALTER TABLE rental_properties ADD COLUMN participant_id UUID;
+  END IF;
   
-  -- Timestamps
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+  -- Add foreign key constraint if it doesn't exist
+  IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints 
+                 WHERE constraint_name = 'fk_rental_participant_id') THEN
+    ALTER TABLE rental_properties 
+    ADD CONSTRAINT fk_rental_participant_id 
+    FOREIGN KEY (participant_id) REFERENCES application_participants(id) ON DELETE CASCADE;
+  END IF;
+END $$;
 
 -- =====================================================
 -- 6. INDEXES FOR PERFORMANCE
@@ -161,14 +145,27 @@ CREATE INDEX IF NOT EXISTS idx_app_participants_person ON application_participan
 CREATE INDEX IF NOT EXISTS idx_app_participants_role ON application_participants(participant_role);
 CREATE INDEX IF NOT EXISTS idx_app_participants_order ON application_participants(application_id, participant_order);
 
--- Employment details indexes
-CREATE INDEX IF NOT EXISTS idx_employment_participant ON employment_details(participant_id);
-
--- Financial commitments indexes
-CREATE INDEX IF NOT EXISTS idx_financial_participant ON financial_commitments(participant_id);
-
--- Rental properties indexes
-CREATE INDEX IF NOT EXISTS idx_rental_participant ON rental_properties(participant_id);
+-- Conditional indexes for existing tables
+DO $$
+BEGIN
+  -- Employment details indexes
+  IF EXISTS (SELECT 1 FROM information_schema.columns 
+             WHERE table_name = 'employment_details' AND column_name = 'participant_id') THEN
+    CREATE INDEX IF NOT EXISTS idx_employment_participant ON employment_details(participant_id);
+  END IF;
+  
+  -- Financial commitments indexes  
+  IF EXISTS (SELECT 1 FROM information_schema.columns 
+             WHERE table_name = 'financial_commitments' AND column_name = 'participant_id') THEN
+    CREATE INDEX IF NOT EXISTS idx_financial_participant ON financial_commitments(participant_id);
+  END IF;
+  
+  -- Rental properties indexes
+  IF EXISTS (SELECT 1 FROM information_schema.columns 
+             WHERE table_name = 'rental_properties' AND column_name = 'participant_id') THEN
+    CREATE INDEX IF NOT EXISTS idx_rental_participant ON rental_properties(participant_id);
+  END IF;
+END $$;
 
 -- =====================================================
 -- 7. UPDATE VERIFICATION_CODES FOREIGN KEY
