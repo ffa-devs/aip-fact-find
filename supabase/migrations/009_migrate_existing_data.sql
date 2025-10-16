@@ -1,0 +1,292 @@
+-- Migration 009: Data Migration from Old to New Structure
+-- This migrates existing applicants and co_applicants to the new people/application_participants structure
+
+-- =====================================================
+-- 1. MIGRATE EXISTING APPLICANTS TO NEW STRUCTURE
+-- =====================================================
+
+-- First, insert unique people from existing applicants
+INSERT INTO people (
+  id,
+  email,
+  first_name,
+  last_name,
+  date_of_birth,
+  telephone,
+  mobile,
+  nationality,
+  created_at,
+  updated_at
+)
+SELECT 
+  gen_random_uuid(),
+  LOWER(email), -- Ensure email is lowercase
+  first_name,
+  last_name,
+  date_of_birth,
+  telephone,
+  mobile,
+  nationality,
+  MIN(created_at), -- Use earliest created_at if duplicate emails exist
+  NOW()
+FROM applicants
+WHERE applicant_order = 1 -- Only primary applicants for now
+GROUP BY 
+  LOWER(email),
+  first_name,
+  last_name,
+  date_of_birth,
+  telephone,
+  mobile,
+  nationality
+ON CONFLICT (email) DO NOTHING; -- Skip if email already exists
+
+-- Now create application_participants records for primary applicants
+INSERT INTO application_participants (
+  id,
+  application_id,
+  person_id,
+  participant_role,
+  participant_order,
+  marital_status,
+  age,
+  current_address,
+  time_at_current_address_years,
+  time_at_current_address_months,
+  previous_address,
+  time_at_previous_address_years,
+  time_at_previous_address_months,
+  tax_country,
+  homeowner_or_tenant,
+  monthly_mortgage_or_rent,
+  current_property_value,
+  mortgage_outstanding,
+  lender_or_landlord_details,
+  employment_status,
+  created_at,
+  updated_at
+)
+SELECT 
+  a.id, -- Use applicant id as participant id for now
+  a.application_id,
+  p.id, -- Person ID from people table
+  'primary',
+  1, -- Primary applicant is always order 1
+  a.marital_status,
+  a.age,
+  a.current_address,
+  a.time_at_current_address_years,
+  a.time_at_current_address_months,
+  a.previous_address,
+  a.time_at_previous_address_years,
+  a.time_at_previous_address_months,
+  a.tax_country,
+  a.homeowner_or_tenant,
+  a.monthly_mortgage_or_rent,
+  a.current_property_value,
+  a.mortgage_outstanding,
+  a.lender_or_landlord_details,
+  a.employment_status,
+  a.created_at,
+  a.updated_at
+FROM applicants a
+JOIN people p ON LOWER(p.email) = LOWER(a.email)
+WHERE a.applicant_order = 1; -- Only primary applicants
+
+-- =====================================================
+-- 2. MIGRATE EXISTING CO-APPLICANTS TO NEW STRUCTURE
+-- =====================================================
+
+-- First, insert unique people from co_applicants table (if they don't already exist)
+INSERT INTO people (
+  id,
+  email,
+  first_name,
+  last_name,
+  date_of_birth,
+  telephone,
+  mobile,
+  nationality,
+  created_at,
+  updated_at
+)
+SELECT 
+  gen_random_uuid(),
+  LOWER(email),
+  first_name,
+  last_name,
+  date_of_birth,
+  telephone,
+  mobile,
+  nationality,
+  MIN(created_at),
+  NOW()
+FROM co_applicants
+GROUP BY 
+  LOWER(email),
+  first_name,
+  last_name,
+  date_of_birth,
+  telephone,
+  mobile,
+  nationality
+ON CONFLICT (email) DO NOTHING;
+
+-- Now create application_participants records for co-applicants
+INSERT INTO application_participants (
+  id,
+  application_id,
+  person_id,
+  participant_role,
+  participant_order,
+  marital_status,
+  age,
+  current_address,
+  time_at_current_address_years,
+  time_at_current_address_months,
+  previous_address,
+  time_at_previous_address_years,
+  time_at_previous_address_months,
+  tax_country,
+  employment_status,
+  relationship_to_primary,
+  same_address_as_primary,
+  created_at,
+  updated_at
+)
+SELECT 
+  ca.id, -- Use co_applicant id as participant id
+  ca.application_id,
+  p.id, -- Person ID from people table
+  'co-applicant',
+  ROW_NUMBER() OVER (PARTITION BY ca.application_id ORDER BY ca.created_at) + 1, -- Start from 2 (after primary)
+  NULL, -- marital_status not in co_applicants table
+  ca.age,
+  CASE 
+    WHEN ca.same_address_as_main = false THEN ca.current_address 
+    ELSE NULL 
+  END,
+  CASE 
+    WHEN ca.same_address_as_main = false THEN ca.time_at_current_address_years 
+    ELSE NULL 
+  END,
+  CASE 
+    WHEN ca.same_address_as_main = false THEN ca.time_at_current_address_months 
+    ELSE NULL 
+  END,
+  CASE 
+    WHEN ca.same_address_as_main = false THEN ca.previous_address 
+    ELSE NULL 
+  END,
+  CASE 
+    WHEN ca.same_address_as_main = false THEN ca.time_at_previous_address_years 
+    ELSE NULL 
+  END,
+  CASE 
+    WHEN ca.same_address_as_main = false THEN ca.time_at_previous_address_months 
+    ELSE NULL 
+  END,
+  ca.tax_country,
+  ca.employment_status,
+  ca.relationship_to_main_applicant,
+  ca.same_address_as_main,
+  ca.created_at,
+  ca.updated_at
+FROM co_applicants ca
+JOIN people p ON LOWER(p.email) = LOWER(ca.email);
+
+-- =====================================================
+-- 3. MIGRATE EMPLOYMENT DETAILS
+-- =====================================================
+
+-- Update employment_details table to reference participants instead of applicants
+-- Note: This assumes employment_details table exists and has applicant_id field
+
+-- First, add temporary column to track migration
+ALTER TABLE employment_details ADD COLUMN IF NOT EXISTS temp_old_applicant_id UUID;
+
+-- Update employment_details to reference application_participants
+UPDATE employment_details 
+SET 
+  temp_old_applicant_id = applicant_id,
+  applicant_id = ap.id
+FROM application_participants ap
+WHERE employment_details.applicant_id = ap.id
+  AND ap.participant_role = 'primary';
+
+-- Rename column to match new schema
+ALTER TABLE employment_details RENAME COLUMN applicant_id TO participant_id;
+
+-- =====================================================
+-- 4. MIGRATE FINANCIAL COMMITMENTS
+-- =====================================================
+
+-- Similar process for financial commitments if they exist
+-- Add temporary column
+ALTER TABLE financial_commitments ADD COLUMN IF NOT EXISTS temp_old_applicant_id UUID;
+
+-- Update to reference participants
+UPDATE financial_commitments 
+SET 
+  temp_old_applicant_id = applicant_id,
+  applicant_id = ap.id
+FROM application_participants ap
+WHERE financial_commitments.applicant_id = ap.id
+  AND ap.participant_role = 'primary';
+
+-- Rename column
+ALTER TABLE financial_commitments RENAME COLUMN applicant_id TO participant_id;
+
+-- =====================================================
+-- 5. MIGRATE RENTAL PROPERTIES
+-- =====================================================
+
+-- Similar process for rental properties
+ALTER TABLE rental_properties ADD COLUMN IF NOT EXISTS temp_old_applicant_id UUID;
+
+UPDATE rental_properties 
+SET 
+  temp_old_applicant_id = applicant_id,
+  applicant_id = ap.id
+FROM application_participants ap
+WHERE rental_properties.applicant_id = ap.id
+  AND ap.participant_role = 'primary';
+
+ALTER TABLE rental_properties RENAME COLUMN applicant_id TO participant_id;
+
+-- =====================================================
+-- 6. VALIDATION QUERIES
+-- =====================================================
+
+-- Count records to verify migration
+DO $$ 
+DECLARE
+  old_applicant_count INTEGER;
+  old_co_applicant_count INTEGER;
+  new_people_count INTEGER;
+  new_participant_count INTEGER;
+BEGIN
+  SELECT COUNT(*) INTO old_applicant_count FROM applicants;
+  SELECT COUNT(*) INTO old_co_applicant_count FROM co_applicants;
+  SELECT COUNT(*) INTO new_people_count FROM people;
+  SELECT COUNT(*) INTO new_participant_count FROM application_participants;
+  
+  RAISE NOTICE 'Migration Summary:';
+  RAISE NOTICE 'Old applicants: %', old_applicant_count;
+  RAISE NOTICE 'Old co-applicants: %', old_co_applicant_count;
+  RAISE NOTICE 'New people: %', new_people_count;
+  RAISE NOTICE 'New participants: %', new_participant_count;
+  
+  -- Basic validation
+  IF new_participant_count < old_applicant_count THEN
+    RAISE WARNING 'Participant count is less than applicant count - check migration!';
+  END IF;
+END $$;
+
+-- Create temporary backup tables for safety
+CREATE TABLE applicants_backup AS SELECT * FROM applicants;
+CREATE TABLE co_applicants_backup AS SELECT * FROM co_applicants;
+
+-- Add comments
+COMMENT ON TABLE applicants_backup IS 'Backup of applicants table before migration - can be dropped after validation';
+COMMENT ON TABLE co_applicants_backup IS 'Backup of co_applicants table before migration - can be dropped after validation';
