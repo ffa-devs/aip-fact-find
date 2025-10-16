@@ -41,17 +41,20 @@ export function RetrieveApplicationDialog({
     try {
       const result = await checkExistingApplication(email)
       
+      // Always show the same message for security - never reveal if email exists or not
+      setStep('verification')
+      toast.success('If an application exists for this email, a verification code has been sent.')
+      
       if (result.exists && result.applicationId) {
-        // Send verification message via GHL
+        // Send verification message via GHL only if application actually exists
         await sendVerificationMessage(result.contactId!, email, result.applicationId)
-        setStep('verification')
-        toast.success('Verification email sent!')
-      } else {
-        toast.error('No existing application found with this email.')
       }
+      // If no application exists, we still show the verification step but no real code is sent
     } catch (error) {
       console.error('Error checking existing application:', error)
-      toast.error('Failed to check for existing application.')
+      // Still show verification step even on error for security
+      setStep('verification')
+      toast.success('If an application exists for this email, a verification code has been sent.')
     } finally {
       setIsLoading(false)
     }
@@ -103,8 +106,8 @@ export function RetrieveApplicationDialog({
           </DialogTitle>
           <DialogDescription>
             {step === 'email' 
-              ? 'Enter your email address to find your existing application'
-              : 'Check your email for the verification code and enter it below'
+              ? 'Enter your email address and we will send a verification code if an application exists'
+              : 'If you have an existing application, check your email for the verification code'
             }
           </DialogDescription>
         </DialogHeader>
