@@ -142,6 +142,7 @@ export interface FormState {
   
   // Step 3: Your Home
   step3: {
+    same_address_as_primary?: boolean;
     current_address: string;
     move_in_date: Date | null;
     homeowner_or_tenant: HomeownerStatus | '';
@@ -159,6 +160,7 @@ export interface FormState {
     has_children: boolean;
     children: Child[];
     co_applicants: Array<{
+      same_address_as_primary?: boolean;
       current_address: string;
       move_in_date: Date | null;
       homeowner_or_tenant: HomeownerStatus | '';

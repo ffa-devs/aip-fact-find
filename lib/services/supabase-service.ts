@@ -18,6 +18,7 @@ export interface DatabaseApplication {
   current_step: number;
   progress_percentage: number;
   ghl_contact_id?: string;
+  ghl_opportunity_id?: string;
   urgency_level?: string;
   purchase_price?: number;
   deposit_available?: number;
@@ -68,6 +69,7 @@ export interface DatabaseApplicant {
  */
 export async function createApplication(): Promise<DatabaseApplication | null> {
   try {
+    console.log('Creating application in Supabase...');
     const { data, error } = await supabase
       .from('applications')
       .insert({
@@ -75,17 +77,24 @@ export async function createApplication(): Promise<DatabaseApplication | null> {
         current_step: 1,
         progress_percentage: 0,
       })
-      .select('id')
+      .select('*')
       .single();
 
     if (error) {
-      console.error('Error creating application:', error);
+      console.error('Supabase error creating application:', error);
+      console.error('Error details:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      });
       return null;
     }
 
-    return data.id;
+    console.log('Successfully created application:', data);
+    return data;
   } catch (error) {
-    console.error('Error in createApplication:', error);
+    console.error('Unexpected error in createApplication:', error);
     return null;
   }
 }
@@ -118,6 +127,104 @@ export async function updateApplication(
   }
 }
 
+
+
+/**
+ * Check if multiple emails already exist in the database (for co-applicant validation)
+ */
+export async function checkMultipleEmailsExist(emails: string[], excludeApplicationId?: string): Promise<{
+  duplicates: Array<{
+    email: string;
+    applicationId: string;
+    applicantId: string;
+  }>;
+  hasConflicts: boolean;
+}> {
+  try {
+    console.log(`🔍 Checking ${emails.length} emails for duplicates...`);
+    
+    let query = supabase
+      .from('applicants')
+      .select('id, application_id, email')
+      .in('email', emails);
+    
+    // Exclude specific application if provided (for updates)
+    if (excludeApplicationId) {
+      query = query.neq('application_id', excludeApplicationId);
+    }
+    
+    const { data, error } = await query;
+    
+    if (error) {
+      console.error('Error checking multiple emails existence:', error);
+      return { duplicates: [], hasConflicts: false };
+    }
+    
+    if (data && data.length > 0) {
+      const duplicates = data.map(applicant => ({
+        email: applicant.email,
+        applicationId: applicant.application_id,
+        applicantId: applicant.id
+      }));
+      
+      console.log(`⚠️ Found ${duplicates.length} duplicate emails:`, duplicates.map(d => d.email).join(', '));
+      return { duplicates, hasConflicts: true };
+    }
+    
+    console.log(`✅ All ${emails.length} emails are unique`);
+    return { duplicates: [], hasConflicts: false };
+  } catch (error) {
+    console.error('Error in checkMultipleEmailsExist:', error);
+    return { duplicates: [], hasConflicts: false };
+  }
+}
+
+/**
+ * Check if an email already exists in the database (across all applications)
+ */
+export async function checkEmailExists(email: string, excludeApplicationId?: string): Promise<{
+  exists: boolean;
+  applicationId?: string;
+  applicantId?: string;
+}> {
+  try {
+    console.log(`🔍 Checking if email ${email} already exists in database...`);
+    
+    let query = supabase
+      .from('applicants')
+      .select('id, application_id, email')
+      .eq('email', email);
+    
+    // Exclude specific application if provided (for updates)
+    if (excludeApplicationId) {
+      query = query.neq('application_id', excludeApplicationId);
+    }
+    
+    const { data, error } = await query;
+    
+    if (error) {
+      console.error('Error checking email existence:', error);
+      return { exists: false };
+    }
+    
+    if (data && data.length > 0) {
+      const existingApplicant = data[0];
+      console.log(`⚠️ Email ${email} already exists in application ${existingApplicant.application_id}`);
+      return {
+        exists: true,
+        applicationId: existingApplicant.application_id,
+        applicantId: existingApplicant.id
+      };
+    }
+    
+    console.log(`✅ Email ${email} is unique`);
+    return { exists: false };
+  } catch (error) {
+    console.error('Error in checkEmailExists:', error);
+    return { exists: false };
+  }
+}
+
 /**
  * Save Step 1 data (Lead Capture) - Creates or updates primary applicant
  */
@@ -126,6 +233,13 @@ export async function saveStep1Data(
   step1Data: FormState['step1']
 ): Promise<boolean> {
   try {
+    // Check if email already exists in another application
+    const emailCheck = await checkEmailExists(step1Data.email, applicationId);
+    if (emailCheck.exists) {
+      console.error(`🚫 Cannot save Step 1 data: Email ${step1Data.email} already exists in application ${emailCheck.applicationId}`);
+      throw new Error(`This email address is already associated with another application. Please use a different email or contact support if you believe this is an error.`);
+    }
+
     // First check if primary applicant exists
     const { data: existingApplicant } = await supabase
       .from('applicants')
@@ -209,6 +323,16 @@ export async function saveStep2Data(
 
     // Handle co-applicants
     if (step2Data.has_co_applicants && step2Data.co_applicants.length > 0) {
+      // Check for duplicate emails across all co-applicants
+      const coApplicantEmails = step2Data.co_applicants.map(coApp => coApp.email);
+      const emailCheck = await checkMultipleEmailsExist(coApplicantEmails, applicationId);
+      
+      if (emailCheck.hasConflicts) {
+        const duplicateEmails = emailCheck.duplicates.map(d => d.email).join(', ');
+        console.error(`🚫 Cannot save Step 2 data: Co-applicant emails already exist: ${duplicateEmails}`);
+        throw new Error(`One or more co-applicant email addresses are already associated with other applications: ${duplicateEmails}. Please use different email addresses.`);
+      }
+      
       // Delete existing co-applicants first
       await supabase
         .from('applicants')

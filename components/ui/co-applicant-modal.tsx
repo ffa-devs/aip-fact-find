@@ -38,10 +38,9 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { NationalityCombobox } from "@/components/ui/nationality-combobox"
 import { PhoneNumberInput } from "@/components/ui/phone-input"
 
@@ -66,6 +65,14 @@ const coApplicantSchema = z.object({
 })
 
 type CoApplicantFormData = z.infer<typeof coApplicantSchema>
+
+const maritalStatuses = [
+  { value: 'single', label: 'Single' },
+  { value: 'married', label: 'Married' },
+  { value: 'civil_partnership', label: 'Civil Partnership' },
+  { value: 'divorced', label: 'Divorced' },
+  { value: 'widowed', label: 'Widowed' },
+];
 
 interface CoApplicantModalProps {
   onSave: (coApplicant: CoApplicantFormData) => void
@@ -339,34 +346,20 @@ function CoApplicantForm({ form, onSubmit, onCancel, isDesktop }: CoApplicantFor
           render={({ field }) => (
             <FormItem>
               <FormLabel>Marital Status *</FormLabel>
-              <FormControl>
-                <RadioGroup
-                  onValueChange={field.onChange}
-                  value={field.value}
-                  className="flex flex-wrap gap-4"
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="single" id="single" />
-                    <Label htmlFor="single">Single</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="married" id="married" />
-                    <Label htmlFor="married">Married</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="civil_partnership" id="civil_partnership" />
-                    <Label htmlFor="civil_partnership">Civil Partnership</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="divorced" id="divorced" />
-                    <Label htmlFor="divorced">Divorced</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="widowed" id="widowed" />
-                    <Label htmlFor="widowed">Widowed</Label>
-                  </div>
-                </RadioGroup>
-              </FormControl>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select marital status" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {maritalStatuses.map((status) => (
+                    <SelectItem key={status.value} value={status.value}>
+                      {status.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <FormMessage />
             </FormItem>
           )}

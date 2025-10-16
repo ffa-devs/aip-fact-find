@@ -2,7 +2,7 @@
 
 import { useFormStore } from '@/lib/store/form-store';
 import { cn } from '@/lib/utils';
-import { CheckCircle2, Circle, User, Users } from 'lucide-react';
+import { CheckCircle2, Circle, User, Users, Lock } from 'lucide-react';
 import { useState } from 'react';
 
 interface Step {
@@ -22,7 +22,7 @@ const steps: Step[] = [
 ];
 
 export function StepNavigation() {
-  const { currentStep, setCurrentStep, step2, step3, step4 } = useFormStore();
+  const { currentStep, setCurrentStep, step2, step3, step4, canNavigateToStep, isStepValid } = useFormStore();
   const [selectedApplicantIndex, setSelectedApplicantIndex] = useState(0);
 
   // Get all applicants (primary + co-applicants)
@@ -40,7 +40,10 @@ export function StepNavigation() {
   };
 
   const getStepStatus = (stepNumber: number) => {
-    if (stepNumber < currentStep) return 'completed';
+    if (stepNumber < currentStep) {
+      // Check if the step is actually valid for completed status
+      return isStepValid(stepNumber) ? 'completed' : 'current';
+    }
     if (stepNumber === currentStep) return 'current';
     return 'upcoming';
   };
@@ -94,7 +97,7 @@ export function StepNavigation() {
       <nav className="space-y-1">
         {steps.map((step) => {
           const status = getStepStatus(step.number);
-          const isClickable = step.number <= currentStep || step.number === currentStep + 1;
+          const isClickable = canNavigateToStep(step.number);
           
           return (
             <div key={step.number}>
@@ -105,8 +108,9 @@ export function StepNavigation() {
                   'w-full flex items-center gap-3 p-3 rounded-lg text-left transition-colors',
                   status === 'current' && 'border border-[#234c8a] border-opacity-30 bg-blue-50',
                   status === 'completed' && 'bg-green-50 hover:bg-green-100',
-                  status === 'upcoming' && 'hover:bg-gray-50',
-                  !isClickable && 'cursor-not-allowed opacity-50'
+                  status === 'upcoming' && isClickable && 'hover:bg-gray-50',
+                  status === 'upcoming' && !isClickable && 'cursor-not-allowed opacity-30 bg-gray-50 border border-gray-200',
+                  isClickable && status !== 'current' && status !== 'completed' && 'hover:bg-gray-50'
                 )}
                 style={status === 'current' ? { backgroundColor: 'rgba(35, 76, 138, 0.05)' } : {}}
               >
@@ -120,6 +124,8 @@ export function StepNavigation() {
                     >
                       {step.number}
                     </div>
+                  ) : !isClickable ? (
+                    <Lock className="w-5 h-5 text-gray-400" />
                   ) : (
                     <Circle className="w-5 h-5 text-gray-400" />
                   )}

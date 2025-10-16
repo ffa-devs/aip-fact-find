@@ -60,6 +60,7 @@ export const step2Schema = z.object({
 
 // Step 3: Your Home
 export const step3Schema = z.object({
+  same_address_as_primary: z.boolean().default(false),
   current_address: z.string().min(1, 'Current address is required'),
   move_in_date: z.date({ message: 'Move-in date is required' }),
   homeowner_or_tenant: z.enum(['homeowner', 'tenant'], {
@@ -181,9 +182,58 @@ export const step6Schema = z.object({
   }),
 });
 
+// Co-Applicant Schema (separate from main applicant)
+export const coApplicantSchema = z.object({
+  first_name: z.string().min(1, 'First name is required'),
+  last_name: z.string().min(1, 'Last name is required'),
+  date_of_birth: z.date({ message: 'Date of birth is required' }),
+  email: z.string().email('Invalid email address'),
+  mobile: z
+    .string()
+    .min(1, 'Mobile number is required')
+    .refine((val) => isValidPhoneNumber(val), {
+      message: 'Invalid phone number',
+    }),
+  telephone: z
+    .string()
+    .optional()
+    .or(z.literal(''))
+    .refine((val) => !val || val === '' || isValidPhoneNumber(val), {
+      message: 'Invalid phone number',
+    }),
+  nationality: z.string().min(1, 'Nationality is required'),
+  relationship_to_main_applicant: z.enum([
+    'spouse', 
+    'partner', 
+    'family_member', 
+    'business_partner', 
+    'other'
+  ], {
+    message: 'Please select the relationship to main applicant',
+  }),
+  same_address_as_main: z.boolean().default(true),
+  
+  // Address fields (only if same_address_as_main is false)
+  current_address: z.string().optional(),
+  time_at_current_address_years: z.number().min(0).optional(),
+  time_at_current_address_months: z.number().min(0).max(11).optional(),
+  
+  // Employment and income
+  employment_status: z.enum(['employed', 'self_employed', 'unemployed', 'retired', 'student']),
+  annual_income: z.number().min(0).optional(),
+  
+  // Financial commitments
+  personal_loans: z.number().min(0).default(0),
+  credit_card_debt: z.number().min(0).default(0),
+  car_loans_lease: z.number().min(0).default(0),
+  has_credit_or_legal_issues: z.boolean().default(false),
+  credit_legal_issues_details: z.string().optional(),
+});
+
 export type Step1FormData = z.infer<typeof step1Schema>;
 export type Step2FormData = z.infer<typeof step2Schema>;
 export type Step3FormData = z.infer<typeof step3Schema>;
 export type Step4FormData = z.infer<typeof step4Schema>;
 export type Step5FormData = z.infer<typeof step5Schema>;
 export type Step6FormData = z.infer<typeof step6Schema>;
+export type CoApplicantFormData = z.infer<typeof coApplicantSchema>;

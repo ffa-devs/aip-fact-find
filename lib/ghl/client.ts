@@ -49,6 +49,10 @@ export interface GHLContactSearchResponse {
 }
 
 export interface GHLUpdateData {
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  dateOfBirth?: string;
   tags?: string[];
   // customFields?: Array<{ id: string; key: string; field_value: string | number | boolean }>; // TODO: Map custom fields in settings
   source?: string;
@@ -206,16 +210,24 @@ class GoHighLevelClient {
     try {
       const headers = await this.getAuthHeaders();
 
+      // Build update payload - only include fields that are provided
+      const updatePayload: Partial<GHLContact> & { tags?: string[] } = {};
+      
+      if (data.firstName !== undefined) updatePayload.firstName = data.firstName;
+      if (data.lastName !== undefined) updatePayload.lastName = data.lastName;
+      if (data.phone !== undefined) updatePayload.phone = data.phone;
+      if (data.dateOfBirth !== undefined) updatePayload.dateOfBirth = data.dateOfBirth;
+      if (data.tags !== undefined) updatePayload.tags = data.tags;
+      if (data.source !== undefined) updatePayload.source = data.source;
+
+      console.log('🔄 Updating GHL contact', contactId, 'with payload:', updatePayload);
+
       const response = await fetch(
         `${GHL_API_BASE}/contacts/${contactId}`,
         {
           method: 'PUT',
           headers,
-          body: JSON.stringify({
-            tags: data.tags,
-            // customFields: data.customFields, // TODO: Map custom fields
-            source: data.source,
-          }),
+          body: JSON.stringify(updatePayload),
         }
       );
 
@@ -225,7 +237,8 @@ class GoHighLevelClient {
         return false;
       }
 
-      console.log('✅ Contact updated in GHL:', contactId);
+      const result = await response.json();
+      console.log('✅ Contact updated in GHL:', contactId, result);
       return true;
     } catch (error) {
       console.error('Failed to update GHL contact:', error);
@@ -292,36 +305,6 @@ class GoHighLevelClient {
       return false;
     }
   }
-
-  /**
-   * Get pipeline stages
-   */
-  async getPipelineStages(pipelineId: string): Promise<GHLPipelineStage[]> {
-    try {
-      const headers = await this.getAuthHeaders();
-
-      const response = await fetch(
-        `${GHL_API_BASE}/pipelines/${pipelineId}`,
-        {
-          method: 'GET',
-          headers,
-        }
-      );
-
-      if (!response.ok) {
-        const error = await response.text();
-        console.error('GHL Get Pipeline Error:', error);
-        return [];
-      }
-
-      const result: GHLPipelineResponse = await response.json();
-      return result.pipeline.stages;
-    } catch (error) {
-      console.error('Failed to get pipeline stages:', error);
-      return [];
-    }
-  }
-
   /**
    * Create an opportunity
    */

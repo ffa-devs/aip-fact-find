@@ -12,6 +12,36 @@ import { step1Schema } from '@/lib/validations/form-schemas';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+    console.log('GHL API received body:', body);
+    console.log('date_of_birth type:', typeof body.date_of_birth);
+
+    // Transform date_of_birth string to Date object if needed
+    if (body.date_of_birth) {
+      if (typeof body.date_of_birth === 'string') {
+        const dateValue = new Date(body.date_of_birth);
+        if (isNaN(dateValue.getTime())) {
+          console.error('Invalid date string:', body.date_of_birth);
+          return NextResponse.json(
+            { error: 'Invalid date format for date_of_birth' },
+            { status: 400 }
+          );
+        }
+        body.date_of_birth = dateValue;
+        console.log('Transformed date_of_birth to:', body.date_of_birth);
+      } else if (!(body.date_of_birth instanceof Date)) {
+        console.error('date_of_birth is not a string or Date:', body.date_of_birth);
+        return NextResponse.json(
+          { error: 'date_of_birth must be a valid date' },
+          { status: 400 }
+        );
+      }
+    } else {
+      console.error('date_of_birth is missing or null');
+      return NextResponse.json(
+        { error: 'date_of_birth is required' },
+        { status: 400 }
+      );
+    }
 
     // Validate the request body with step 1 schema
     const validatedData = step1Schema.parse(body);

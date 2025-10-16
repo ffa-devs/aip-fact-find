@@ -35,7 +35,7 @@ const steps: Step[] = [
 ]
 
 export function AppSidebar() {
-  const { currentStep, setCurrentStep, step2, step3, step4 } = useFormStore()
+  const { currentStep, setCurrentStep, step2, step3, step4, canNavigateToStep, isStepValid } = useFormStore()
   const selectedApplicantIndex = useApplicantSelector()
 
   // Get all applicants (primary + co-applicants)
@@ -128,12 +128,28 @@ export function AppSidebar() {
             <SidebarMenu className="space-y-2">
               {steps.map((step) => {
                 const status = getStepStatus(step.number)
-                const isClickable = step.number <= currentStep || step.number === currentStep + 1
+                const isClickable = canNavigateToStep(step.number)
+                
+                // Debug logging
+                console.log(`Step ${step.number}:`, {
+                  status,
+                  isClickable,
+                  currentStep,
+                  isValid: isStepValid(step.number)
+                })
 
                 return (
                   <SidebarMenuItem key={step.number}>
                     <SidebarMenuButton
-                      onClick={() => isClickable && setCurrentStep(step.number)}
+                      onClick={() => {
+                        console.log(`Clicked step ${step.number}, isClickable: ${isClickable}`)
+                        if (isClickable) {
+                          console.log(`Navigating to step ${step.number}`)
+                          setCurrentStep(step.number)
+                        } else {
+                          console.log(`Navigation blocked to step ${step.number}`)
+                        }
+                      }}
                       disabled={!isClickable}
                       isActive={status === 'current'}
                       className={cn(

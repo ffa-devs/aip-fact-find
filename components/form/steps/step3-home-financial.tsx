@@ -3,7 +3,8 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useFormStore } from '@/lib/store/form-store';
-import { step3Schema, Step3FormData } from '@/lib/validations/form-schemas';
+import { step3Schema } from '@/lib/validations/form-schemas';
+import { z } from 'zod';
 import {
   Form,
   FormControl,
@@ -14,6 +15,7 @@ import {
   FormDescription,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -25,11 +27,13 @@ import { CurrencyInput } from '@/components/ui/currency-input';
 import { Plus, X, CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 
+type Step3Data = z.infer<typeof step3Schema>;
+
 interface Step3Props {
-  onNext: (formData?: Step3FormData) => void;
+  onNext: (formData?: Step3Data) => void;
   applicantIndex?: number;
   isMultiApplicant?: boolean;
   hideNavigation?: boolean;
@@ -44,12 +48,13 @@ export function Step3HomeFinancial({
   const { step2, step3, updateStep3 } = useFormStore();
   
   // Get current applicant data
-  const getCurrentApplicantData = () => {
+  const getCurrentApplicantData = useCallback(() => {
     if (applicantIndex === 0) {
       return step3; // Primary applicant
     } else {
       const coApplicantIndex = applicantIndex - 1;
       return step3.co_applicants?.[coApplicantIndex] || {
+        same_address_as_primary: false,
         current_address: '',
         move_in_date: null,
         homeowner_or_tenant: '',
@@ -68,45 +73,17 @@ export function Step3HomeFinancial({
         children: [],
       };
     }
-  };
+  }, [step3, applicantIndex]);
 
   const currentData = getCurrentApplicantData();
   const [showChildren, setShowChildren] = useState(currentData.has_children);
 
-  const form = useForm<Step3FormData>({
-    resolver: async (values, context, options) => {
-      // Convert date fields to Date if they're strings
-      const processedValues = {
-        ...values,
-        move_in_date: values.move_in_date instanceof Date 
-          ? values.move_in_date 
-          : typeof values.move_in_date === 'string'
-          ? new Date(values.move_in_date)
-          : values.move_in_date,
-        previous_move_in_date: values.previous_move_in_date instanceof Date 
-          ? values.previous_move_in_date 
-          : typeof values.previous_move_in_date === 'string'
-          ? new Date(values.previous_move_in_date)
-          : values.previous_move_in_date,
-        previous_move_out_date: values.previous_move_out_date instanceof Date 
-          ? values.previous_move_out_date 
-          : typeof values.previous_move_out_date === 'string'
-          ? new Date(values.previous_move_out_date)
-          : values.previous_move_out_date,
-        children: values.children?.map(child => ({
-          ...child,
-          date_of_birth: child.date_of_birth instanceof Date 
-            ? child.date_of_birth 
-            : typeof child.date_of_birth === 'string'
-            ? new Date(child.date_of_birth)
-            : child.date_of_birth,
-        })) || [],
-      };
-      return zodResolver(step3Schema)(processedValues, context, options);
-    },
+  const form = useForm({
+    resolver: zodResolver(step3Schema),
     mode: 'onSubmit',
     reValidateMode: 'onSubmit',
     defaultValues: {
+      same_address_as_primary: currentData.same_address_as_primary || false,
       current_address: currentData.current_address,
       move_in_date: currentData.move_in_date 
         ? (currentData.move_in_date instanceof Date ? currentData.move_in_date : new Date(currentData.move_in_date))
@@ -135,6 +112,39 @@ export function Step3HomeFinancial({
     },
   });
 
+  // Reset form when currentData changes (e.g., from localStorage or applicant selection)
+  useEffect(() => {
+    const currentData = getCurrentApplicantData();
+    form.reset({
+      same_address_as_primary: currentData.same_address_as_primary || false,
+      current_address: currentData.current_address,
+      move_in_date: currentData.move_in_date 
+        ? (currentData.move_in_date instanceof Date ? currentData.move_in_date : new Date(currentData.move_in_date))
+        : undefined,
+      homeowner_or_tenant: currentData.homeowner_or_tenant as 'homeowner' | 'tenant' | undefined,
+      monthly_mortgage_or_rent: currentData.monthly_mortgage_or_rent || 0,
+      monthly_payment_currency: currentData.monthly_payment_currency || 'EUR',
+      current_property_value: currentData.current_property_value || 0,
+      property_value_currency: currentData.property_value_currency || 'EUR',
+      mortgage_outstanding: currentData.mortgage_outstanding || 0,
+      mortgage_outstanding_currency: currentData.mortgage_outstanding_currency || 'EUR',
+      lender_or_landlord_details: currentData.lender_or_landlord_details,
+      previous_address: currentData.previous_address,
+      previous_move_in_date: currentData.previous_move_in_date 
+        ? (currentData.previous_move_in_date instanceof Date ? currentData.previous_move_in_date : new Date(currentData.previous_move_in_date))
+        : undefined,
+      previous_move_out_date: currentData.previous_move_out_date 
+        ? (currentData.previous_move_out_date instanceof Date ? currentData.previous_move_out_date : new Date(currentData.previous_move_out_date))
+        : undefined,
+      tax_country: currentData.tax_country || step2.nationality || '',
+      has_children: currentData.has_children,
+      children: currentData.children?.map(child => ({
+        ...child,
+        date_of_birth: child.date_of_birth instanceof Date ? child.date_of_birth : new Date(child.date_of_birth)
+      })) || [],
+    });
+  }, [step3, applicantIndex, step2, form, getCurrentApplicantData]);
+
   // Prefill tax_country with nationality when nationality changes
   useEffect(() => {
     if (step2.nationality && !form.getValues('tax_country')) {
@@ -142,7 +152,7 @@ export function Step3HomeFinancial({
     }
   }, [step2.nationality, form]);
 
-  const onSubmit = async (data: Step3FormData) => {
+  const onSubmit = async (data: Step3Data) => {
     if (isMultiApplicant) {
       // For multi-applicant mode, pass data to parent handler
       onNext(data);
@@ -197,6 +207,49 @@ export function Step3HomeFinancial({
               <CardTitle className="text-lg">Current Address</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Same Address Checkbox - Only show for co-applicants */}
+              {isMultiApplicant && applicantIndex > 0 && (
+                <FormField
+                  control={form.control}
+                  name="same_address_as_primary"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={(checked) => {
+                            field.onChange(checked);
+                            if (checked) {
+                              // Prefill with primary applicant's address data
+                              const primaryData = step3;
+                              form.setValue('current_address', primaryData.current_address || '');
+                              if (primaryData.move_in_date) {
+                                form.setValue('move_in_date', primaryData.move_in_date instanceof Date ? primaryData.move_in_date : new Date(primaryData.move_in_date));
+                              }
+                              form.setValue('previous_address', primaryData.previous_address || '');
+                              if (primaryData.previous_move_in_date) {
+                                form.setValue('previous_move_in_date', primaryData.previous_move_in_date instanceof Date ? primaryData.previous_move_in_date : new Date(primaryData.previous_move_in_date));
+                              }
+                              if (primaryData.previous_move_out_date) {
+                                form.setValue('previous_move_out_date', primaryData.previous_move_out_date instanceof Date ? primaryData.previous_move_out_date : new Date(primaryData.previous_move_out_date));
+                              }
+                            }
+                          }}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel className="text-sm font-medium">
+                          Same address as primary applicant
+                        </FormLabel>
+                        <FormDescription>
+                          Check this if you live at the same address as the primary applicant
+                        </FormDescription>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+              )}
+
               <FormField
                 control={form.control}
                 name="current_address"
@@ -204,7 +257,11 @@ export function Step3HomeFinancial({
                   <FormItem>
                     <FormLabel>Full Address *</FormLabel>
                     <FormControl>
-                      <Input placeholder="123 Main Street, City, Country" {...field} />
+                      <Input 
+                        placeholder="123 Main Street, City, Country" 
+                        {...field}
+                        disabled={isMultiApplicant && applicantIndex > 0 && form.watch('same_address_as_primary')}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -222,6 +279,7 @@ export function Step3HomeFinancial({
                         <FormControl>
                           <Button
                             variant="outline"
+                            disabled={isMultiApplicant && applicantIndex > 0 && form.watch('same_address_as_primary')}
                             className={cn(
                               'w-full pl-3 text-left font-normal',
                               !field.value && 'text-muted-foreground'
@@ -476,7 +534,7 @@ export function Step3HomeFinancial({
           </Card>
         </div>
 
-        {!hideNavigation && <FormNavigation showSaveForLater={true} />}
+        {!hideNavigation && <FormNavigation onNext={() => form.handleSubmit(onSubmit, onError)()} showSaveForLater={true} />}
       </form>
     </Form>
   );

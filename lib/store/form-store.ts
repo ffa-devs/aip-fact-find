@@ -5,13 +5,9 @@ import {
   createApplication,
   saveStep1Data,
   saveStep2Data,
-  saveStep3Data,
-  saveStep4Data,
-  saveStep5Data,
-  saveStep6Data,
   loadApplicationData,
-  transformDatabaseToFormState
-} from '@/lib/services/supabase-service';
+} from '@/lib/services/api-service';
+import { transformDatabaseToFormState } from '@/lib/services/supabase-service';
 
 const initialState: FormState = {
   step1: {
@@ -29,6 +25,7 @@ const initialState: FormState = {
     co_applicants: [],
   },
   step3: {
+    same_address_as_primary: false,
     current_address: '',
     move_in_date: null,
     homeowner_or_tenant: '',
@@ -105,6 +102,10 @@ interface FormActions {
   loadApplication: (applicationId: string) => Promise<boolean>;
   saveCurrentProgress: () => Promise<void>;
   
+  // Validation functions
+  isStepValid: (stepNumber: number) => boolean;
+  canNavigateToStep: (stepNumber: number) => boolean;
+  
   // Error handling
   lastError?: string | null;
   setError: (error: string | null) => void;
@@ -126,9 +127,9 @@ export const useFormStore = create<FormState & FormActions>()(
         // Sync to database
         const state = get();
         if (state.applicationId) {
-          const success = await saveStep1Data(state.applicationId, { ...state.step1, ...data });
-          if (!success) {
-            set({ lastError: 'Failed to save Step 1 data to database' });
+          const result = await saveStep1Data(state.applicationId, { ...state.step1, ...data });
+          if (result.error) {
+            set({ lastError: result.error });
           }
         }
       },
@@ -143,9 +144,9 @@ export const useFormStore = create<FormState & FormActions>()(
         // Sync to database
         const state = get();
         if (state.applicationId) {
-          const success = await saveStep2Data(state.applicationId, { ...state.step2, ...data });
-          if (!success) {
-            set({ lastError: 'Failed to save Step 2 data to database' });
+          const result = await saveStep2Data(state.applicationId, { ...state.step2, ...data });
+          if (result.error) {
+            set({ lastError: result.error });
           }
         }
       },
@@ -157,7 +158,7 @@ export const useFormStore = create<FormState & FormActions>()(
           lastError: null,
         }));
 
-        // Note: Step 3 uses applicant-specific saving via updateStep3ForApplicant
+        // TODO: Implement Step 3 API route
       },
 
       updateStep4: async (data) => {
@@ -167,7 +168,7 @@ export const useFormStore = create<FormState & FormActions>()(
           lastError: null,
         }));
 
-        // Note: Step 4 uses applicant-specific saving via updateStep4ForApplicant
+        // TODO: Implement Step 4 API route
       },
 
       updateStep5: async (data) => {
@@ -177,14 +178,7 @@ export const useFormStore = create<FormState & FormActions>()(
           lastError: null,
         }));
 
-        // Sync to database
-        const state = get();
-        if (state.applicationId) {
-          const success = await saveStep5Data(state.applicationId, { ...state.step5, ...data });
-          if (!success) {
-            set({ lastError: 'Failed to save Step 5 data to database' });
-          }
-        }
+        // TODO: Implement Step 5 API route
       },
 
       updateStep6: async (data) => {
@@ -194,41 +188,18 @@ export const useFormStore = create<FormState & FormActions>()(
           lastError: null,
         }));
 
-        // Sync to database
-        const state = get();
-        if (state.applicationId) {
-          const success = await saveStep6Data(state.applicationId, { ...state.step6, ...data });
-          if (!success) {
-            set({ lastError: 'Failed to save Step 6 data to database' });
-          }
-        }
+        // TODO: Implement Step 6 API route
       },
 
-      // Multi-applicant specific functions
+            // Multi-applicant specific functions
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       updateStep3ForApplicant: async (applicantIndex: number, data: Record<string, unknown>) => {
-        const state = get();
-        if (state.applicationId) {
-          const applicantOrder = applicantIndex + 1; // Convert 0-based index to 1-based order
-          const success = await saveStep3Data(state.applicationId, applicantOrder, data);
-          if (!success) {
-            set({ lastError: `Failed to save Step 3 data for applicant ${applicantOrder}` });
-          } else {
-            set({ lastError: null });
-          }
-        }
+        // TODO: Implement Step 3 applicant-specific API route
       },
 
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       updateStep4ForApplicant: async (applicantIndex: number, data: Record<string, unknown>) => {
-        const state = get();
-        if (state.applicationId) {
-          const applicantOrder = applicantIndex + 1; // Convert 0-based index to 1-based order
-          const success = await saveStep4Data(state.applicationId, applicantOrder, data);
-          if (!success) {
-            set({ lastError: `Failed to save Step 4 data for applicant ${applicantOrder}` });
-          } else {
-            set({ lastError: null });
-          }
-        }
+        // TODO: Implement Step 4 applicant-specific API route
       },
 
       setCurrentStep: (step) => set({ currentStep: step }),
@@ -267,16 +238,17 @@ export const useFormStore = create<FormState & FormActions>()(
       // Database operations
       createNewApplication: async (ghlContactId?: string) => {
         try {
-          const application = await createApplication();
-          if (application) {
+          const result = await createApplication();
+          if (result.data) {
+            const app = result.data as { id: string };
             set({ 
-              applicationId: application.id, 
+              applicationId: app.id, 
               ghlContactId: ghlContactId || null,
               lastError: null 
             });
-            return application.id;
+            return app.id;
           } else {
-            set({ lastError: 'Failed to create new application' });
+            set({ lastError: result.error || 'Failed to create new application' });
             return null;
           }
         } catch (error) {
@@ -288,9 +260,9 @@ export const useFormStore = create<FormState & FormActions>()(
 
       loadApplication: async (applicationId: string) => {
         try {
-          const dbData = await loadApplicationData(applicationId);
-          if (dbData) {
-            const formState = transformDatabaseToFormState(dbData);
+          const result = await loadApplicationData(applicationId);
+          if (result.data) {
+            const formState = transformDatabaseToFormState(result.data);
             if (formState) {
               // Update all form state from database
               set({
@@ -300,7 +272,7 @@ export const useFormStore = create<FormState & FormActions>()(
               return true;
             }
           }
-          set({ lastError: 'Failed to load application data' });
+          set({ lastError: result.error || 'Failed to load application data' });
           return false;
         } catch (error) {
           console.error('Error loading application:', error);
@@ -314,8 +286,110 @@ export const useFormStore = create<FormState & FormActions>()(
         if (state.applicationId) {
           // This would save the entire current state as progress
           // Implementation depends on how you want to track progress
-          console.log('Saving current progress for application:', state.applicationId);
         }
+      },
+
+      // Validation functions
+      isStepValid: (stepNumber: number) => {
+        const state = get();
+        
+        switch (stepNumber) {
+          case 1:
+            const step1Valid = !!(
+              state.step1.first_name &&
+              state.step1.last_name &&
+              state.step1.date_of_birth &&
+              state.step1.email &&
+              state.step1.mobile
+            );
+
+            return step1Valid;
+            
+          case 2:
+            const step2Valid = !!(
+              state.step2.nationality &&
+              state.step2.marital_status
+            );
+            // If has co-applicants, ensure at least one co-applicant exists
+            if (state.step2.has_co_applicants) {
+              return step2Valid && !!(state.step2.co_applicants?.length);
+            }
+            return step2Valid;
+            
+          case 3:
+            // Check primary applicant
+            const primaryStep3Valid = !!(
+              state.step3.current_address &&
+              state.step3.move_in_date &&
+              state.step3.homeowner_or_tenant &&
+              state.step3.tax_country &&
+              typeof state.step3.monthly_mortgage_or_rent === 'number'
+            );
+            
+            // If has children, check children data
+            let childrenValid = true;
+            if (state.step3.has_children) {
+              childrenValid = !!(state.step3.children?.length);
+            }
+            
+            // Check co-applicants if they exist
+            let coApplicantsStep3Valid = true;
+            if (state.step2.has_co_applicants && state.step3.co_applicants?.length) {
+              coApplicantsStep3Valid = state.step3.co_applicants.every(coApp => 
+                !!(coApp.current_address && coApp.move_in_date && coApp.homeowner_or_tenant && coApp.tax_country)
+              );
+            }
+            
+            return primaryStep3Valid && childrenValid && coApplicantsStep3Valid;
+            
+          case 4:
+            // Check primary applicant employment
+            const primaryStep4Valid = !!(state.step4.employment_status);
+            
+            // Check co-applicants employment if they exist
+            let coApplicantsStep4Valid = true;
+            if (state.step2.has_co_applicants && state.step4.co_applicants?.length) {
+              coApplicantsStep4Valid = state.step4.co_applicants.every(coApp => 
+                !!(coApp.employment_status)
+              );
+            }
+            
+            return primaryStep4Valid && coApplicantsStep4Valid;
+            
+          case 5:
+            return true; // Step 5 is optional, so always valid
+            
+          case 6:
+            return !!(
+              state.step6.urgency_level &&
+              state.step6.purchase_price &&
+              state.step6.deposit_available &&
+              state.step6.property_address &&
+              state.step6.home_status &&
+              state.step6.property_type &&
+              state.step6.authorization_consent
+            );
+            
+          default:
+            return false;
+        }
+      },
+      
+      canNavigateToStep: (stepNumber: number) => {
+        // Always allow going to step 1
+        if (stepNumber === 1) {
+          return true;
+        }
+        
+        // For any step > 1, check that all previous steps are valid
+        for (let i = 1; i < stepNumber; i++) {
+          const isValid = get().isStepValid(i);
+          if (!isValid) {
+            return false;
+          }
+        }
+        
+        return true;
       },
 
       // Error handling

@@ -8,20 +8,45 @@ import { Step3MultiApplicant } from './steps/step3-multi-applicant'
 import { Step4MultiApplicant } from './steps/step4-multi-applicant'
 import { Step5Portfolio } from './steps/step5-portfolio'
 import { Step6SpanishProperty } from './steps/step6-spanish-property'
-import { useEffect } from 'react'
+import { RetrieveApplicationDialog } from './retrieve-application-dialog'
+import { useEffect, useState } from 'react'
 import { SidebarProvider, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar'
+import { Button } from '@/components/ui/button'
 import Image from 'next/image'
+import { toast } from 'sonner'
+import { Mail } from 'lucide-react'
 
 export function MultiStepForm() {
-  const { 
-    currentStep, 
-    nextStep, 
-    applicationId, 
-    loadApplication, 
+  const [showRetrieveDialog, setShowRetrieveDialog] = useState(false)
+  
+  const {
+    currentStep,
+    nextStep,
+    applicationId,
+    loadApplication,
     saveCurrentProgress,
     lastError,
-    clearError 
+    clearError,
   } = useFormStore()
+
+  const handleApplicationRetrieved = (applicationId: string) => {
+    loadApplication(applicationId)
+    setShowRetrieveDialog(false)
+    toast.success('Application retrieved successfully!')
+  }
+
+  // Show toast for database errors
+  useEffect(() => {
+    if (lastError) {
+      toast.error('Database Sync Warning', {
+        description: `${lastError}. Your data is saved locally and will sync when connection is restored.`,
+        action: {
+          label: 'Dismiss',
+          onClick: () => clearError(),
+        },
+      })
+    }
+  }, [lastError, clearError])
 
   // Initialize application on first load
   useEffect(() => {
@@ -30,10 +55,7 @@ export function MultiStepForm() {
       if (applicationId) {
         try {
           const success = await loadApplication(applicationId)
-          if (success) {
-            console.log('Loaded existing application:', applicationId)
-          } else {
-            console.log('Failed to load application, starting fresh')
+         if (!success) {
             clearError()
           }
         } catch (error) {
@@ -130,61 +152,39 @@ export function MultiStepForm() {
     >
       <AppSidebar />
       <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center border-b px-4">
-          <SidebarTrigger className="-ml-1" />
-          <div className="mx-auto flex items-center gap-4">
+        <header className="flex h-18 shrink-0 items-center border-b p-4 justify-between">
+          <div className="flex items-center gap-4">
+            <SidebarTrigger className="md:hidden" />
             <Image
-              src="/ffa-logo.png"
+              src="/logo-long.jpg"
               alt="FFA Financial"
-              width={40}
+              width={160}
               height={40}
-              className="rounded-lg"
+              className="h-14 w-auto"
             />
-            <div>
-              <h1 className="text-lg font-semibold" style={{ color: '#234c8a' }}>
-                AIP Fact Find
-              </h1>
-              <p className="text-sm text-gray-600">
-                📧 hello@ffafinancial.com | ☎️ +34 952 806 120
-              </p>
+          </div>
+          
+          <div className="flex items-center gap-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowRetrieveDialog(true)}
+              className="hidden md:flex items-center gap-2"
+            >
+              <Mail className="h-4 w-4" />
+              Retrieve Application
+            </Button>
+            <div className="hidden md:block text-right text-sm text-gray-600">
+              <p className="font-medium">info@fluentfinanceabroad.com</p>
+              <p>Tel: +34 952 85 36 47</p>
+              <p className="text-xs">UK: +44 (0) 2033939902 | US: 001 2023791946</p>
             </div>
           </div>
         </header>
 
         <div className="flex-1 space-y-4 p-6">
-          {/* Database Error Banner */}
-          {lastError && (
-            <div className="mx-auto max-w-2xl">
-              <div className="rounded-lg bg-yellow-50 border border-yellow-200 p-4">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                  <div className="ml-3">
-                    <h3 className="text-sm font-medium text-yellow-800">Database Sync Warning</h3>
-                    <p className="text-sm text-yellow-700 mt-1">{lastError}</p>
-                    <p className="text-xs text-yellow-600 mt-1">Your data is saved locally and will sync when connection is restored.</p>
-                  </div>
-                  <div className="ml-auto pl-3">
-                    <button
-                      type="button"
-                      className="inline-flex rounded-md bg-yellow-50 p-1.5 text-yellow-500 hover:bg-yellow-100"
-                      onClick={clearError}
-                    >
-                      <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div className="mx-auto max-w-2xl space-y-6">
-            <div className="text-center space-y-2">
+          <div className="max-w-3xl space-y-6">
+            <div className=" space-y-2">
               <h2 className="text-2xl font-bold text-gray-900">{getStepTitle()}</h2>
               <p className="text-gray-600">{getStepSubtitle()}</p>
             </div>
@@ -192,6 +192,12 @@ export function MultiStepForm() {
           </div>
         </div>
       </SidebarInset>
+      
+      <RetrieveApplicationDialog
+        open={showRetrieveDialog}
+        onOpenChange={setShowRetrieveDialog}
+        onApplicationRetrieved={handleApplicationRetrieved}
+      />
     </SidebarProvider>
   )
 }

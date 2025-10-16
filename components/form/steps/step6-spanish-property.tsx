@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/select';
 import { FormNavigation } from '@/components/form/form-navigation';
 import { toast } from 'sonner';
+import { useState, useEffect } from 'react';
 
 interface Step6Props {
   onNext: () => void;
@@ -34,6 +35,7 @@ interface Step6Props {
 
 export function Step6SpanishProperty({ onNext }: Step6Props) {
   const { step6, updateStep6 } = useFormStore();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<Step6FormData>({
     resolver: zodResolver(step6Schema),
@@ -53,7 +55,24 @@ export function Step6SpanishProperty({ onNext }: Step6Props) {
     },
   });
 
+  // Reset form when step6 data changes (e.g., from localStorage or navigation)
+  useEffect(() => {
+    form.reset({
+      urgency_level: step6.urgency_level === '' ? undefined : step6.urgency_level,
+      purchase_price: step6.purchase_price || undefined,
+      deposit_available: step6.deposit_available || undefined,
+      property_address: step6.property_address || '',
+      home_status: step6.home_status === '' ? undefined : step6.home_status,
+      property_type: step6.property_type === '' ? undefined : step6.property_type,
+      real_estate_agent_contact: step6.real_estate_agent_contact || '',
+      lawyer_contact: step6.lawyer_contact || '',
+      additional_information: step6.additional_information || '',
+      authorization_consent: step6.authorization_consent || false,
+    });
+  }, [step6, form]);
+
   const onSubmit = async (data: Step6FormData) => {
+    setIsSubmitting(true);
     try {
       // Transform the validated data back to the store format
       const formData = {
@@ -78,6 +97,8 @@ export function Step6SpanishProperty({ onNext }: Step6Props) {
       toast.error('Error submitting application', {
         description: 'Please try again or contact support',
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -349,7 +370,10 @@ export function Step6SpanishProperty({ onNext }: Step6Props) {
             </CardContent>
           </Card>
 
-          <FormNavigation onNext={() => form.handleSubmit(onSubmit, onError)()} />
+          <FormNavigation 
+            onNext={() => form.handleSubmit(onSubmit, onError)()} 
+            isSubmitting={isSubmitting} 
+          />
         </div>
       </form>
     </Form>

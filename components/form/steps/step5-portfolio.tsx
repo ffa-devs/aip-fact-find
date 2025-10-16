@@ -20,6 +20,7 @@ import { RentalPropertyModal } from '@/components/ui/rental-property-modal';
 import { FormNavigation } from '@/components/form/form-navigation';
 import { Edit, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useState, useEffect } from 'react';
 
 interface Step5Props {
   onNext: () => void;
@@ -27,6 +28,7 @@ interface Step5Props {
 
 export function Step5Portfolio({ onNext }: Step5Props) {
   const { step5, updateStep5 } = useFormStore();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<Step5FormData>({
     resolver: zodResolver(step5Schema),
@@ -42,7 +44,17 @@ export function Step5Portfolio({ onNext }: Step5Props) {
   const watchedHasRentalProperties = form.watch('has_rental_properties');
   const watchedRentalProperties = form.watch('rental_properties') || [];
 
+  // Reset form when step5 data changes (e.g., from localStorage or navigation)
+  useEffect(() => {
+    form.reset({
+      has_rental_properties: step5.has_rental_properties || false,
+      rental_properties: step5.rental_properties || [],
+      other_assets: step5.other_assets || '',
+    });
+  }, [step5, form]);
+
   const onSubmit = async (data: Step5FormData) => {
+    setIsSubmitting(true);
     try {
       // Transform the validated data back to the store format
       const formData = {
@@ -58,6 +70,8 @@ export function Step5Portfolio({ onNext }: Step5Props) {
       console.error('Error saving Step 5 data:', error);
       // Still proceed even if database sync fails
       onNext();
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -248,7 +262,10 @@ export function Step5Portfolio({ onNext }: Step5Props) {
             </CardContent>
           </Card>
 
-          <FormNavigation onNext={() => form.handleSubmit(onSubmit, onError)()} />
+          <FormNavigation 
+            onNext={() => form.handleSubmit(onSubmit, onError)()} 
+            isSubmitting={isSubmitting} 
+          />
         </div>
       </form>
     </Form>

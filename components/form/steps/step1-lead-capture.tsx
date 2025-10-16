@@ -17,12 +17,14 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { PhoneNumberInput } from '@/components/ui/phone-input';
+import { FormNavigation } from '@/components/form/form-navigation';
+import { updateApplicationWithGhlId } from '@/lib/services/api-service';
 
 import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface Step1Props {
   onNext: () => void;
@@ -68,9 +70,26 @@ export function Step1LeadCapture({ onNext }: Step1Props) {
     },
   });
 
+  // Reset form when step1 data changes (e.g., from localStorage or navigation)
+  useEffect(() => {
+    form.reset({
+      first_name: step1.first_name,
+      last_name: step1.last_name,
+      date_of_birth: step1.date_of_birth 
+        ? (step1.date_of_birth instanceof Date ? step1.date_of_birth : new Date(step1.date_of_birth))
+        : undefined,
+      email: step1.email,
+      mobile: step1.mobile,
+    });
+  }, [step1, form]);
+
   const onSubmit = async (data: Step1FormData) => {
     setIsSubmitting(true);
     clearError(); // Clear any previous errors
+    
+    console.log('Step 1 onSubmit data:', data);
+    console.log('date_of_birth type:', typeof data.date_of_birth);
+    console.log('date_of_birth value:', data.date_of_birth);
     
     try {
       // Create application if it doesn't exist
@@ -94,70 +113,95 @@ export function Step1LeadCapture({ onNext }: Step1Props) {
         });
       }
       
-      // Create GHL contact if not already created
-      if (!ghlContactId) {
-        try {
-          const response = await fetch('/api/gohigh/create-lead', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data),
-          });
+      // Always sync with GHL (create or update contact)
+      try {
+        const response = await fetch('/api/gohigh/create-lead', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
 
-          const result = await response.json();
+        const result = await response.json();
 
-          if (result.success && result.contactId) {
+        if (result.success && result.contactId) {
+          // Update contact ID in store if not already set
+          if (!ghlContactId) {
             setGhlContactId(result.contactId);
-            if (result.opportunityId) {
-              setGhlOpportunityId(result.opportunityId);
-            }
+          }
+          if (result.opportunityId && !ghlContactId) {
+            setGhlOpportunityId(result.opportunityId);
+          }
 
-            // If existing contact was found, prefill the form with their data
-            if (result.isExisting && result.existingData) {
-              const existingData = result.existingData;
+          // Save GHL IDs to Supabase 
+          if (currentApplicationId) {
+            try {
+              const updateResult = await updateApplicationWithGhlId(
+                currentApplicationId,
+                result.contactId,
+                result.opportunityId
+              );
               
-              // Update form fields with existing data
-              const updatedData = { ...data };
-              if (existingData.first_name) {
-                form.setValue('first_name', existingData.first_name);
-                updatedData.first_name = existingData.first_name;
+              if (updateResult.error) {
+                console.error('Failed to update application with GHL ID:', updateResult.error);
+                // Don't block the flow, just log the error
+              } else {
+                console.log('✅ Application updated with GHL IDs:', {
+                  contactId: result.contactId,
+                  opportunityId: result.opportunityId
+                });
               }
-              if (existingData.last_name) {
-                form.setValue('last_name', existingData.last_name);
-                updatedData.last_name = existingData.last_name;
-              }
-              if (existingData.mobile) {
-                form.setValue('mobile', existingData.mobile);
-                updatedData.mobile = existingData.mobile;
-              }
-              if (existingData.date_of_birth) {
-                const dob = new Date(existingData.date_of_birth);
-                form.setValue('date_of_birth', dob);
-                updatedData.date_of_birth = dob;
-              }
-              
-              // Update with merged data
-              await updateStep1(updatedData);
-
-              toast.success('Existing contact found!', {
-                description: 'We\'ve populated your details from our records',
-              });
-            } else {
-              toast.success('Lead created successfully!', {
-                description: 'Your information has been saved',
-              });
+            } catch (error) {
+              console.error('Error updating application with GHL ID:', error);
+              // Don't block the flow
             }
+          }
+
+          // If existing contact was found, prefill the form with their data
+          if (result.isExisting && result.existingData) {
+            const existingData = result.existingData;
+            
+            // Update form fields with existing data
+            const updatedData = { ...data };
+            if (existingData.first_name) {
+              form.setValue('first_name', existingData.first_name);
+              updatedData.first_name = existingData.first_name;
+            }
+            if (existingData.last_name) {
+              form.setValue('last_name', existingData.last_name);
+              updatedData.last_name = existingData.last_name;
+            }
+            if (existingData.mobile) {
+              form.setValue('mobile', existingData.mobile);
+              updatedData.mobile = existingData.mobile;
+            }
+            if (existingData.date_of_birth) {
+              const dob = new Date(existingData.date_of_birth);
+              form.setValue('date_of_birth', dob);
+              updatedData.date_of_birth = dob;
+            }
+            
+            // Update with merged data
+            await updateStep1(updatedData);
+
+            toast.success('Contact updated!', {
+              description: 'Your information has been synced with our records',
+            });
           } else {
-            console.error('Failed to create GHL contact:', result.error);
-            toast.error('Note: Could not sync with CRM', {
-              description: 'Your form data is still saved locally',
+            toast.success('Lead created successfully!', {
+              description: 'Your information has been saved',
             });
           }
-        } catch (error) {
-          console.error('Error creating GHL contact:', error);
+        } else {
+          console.error('Failed to sync with GHL:', result.error);
           toast.error('Note: Could not sync with CRM', {
             description: 'Your form data is still saved locally',
           });
         }
+      } catch (error) {
+        console.error('Error syncing with GHL:', error);
+        toast.error('Note: Could not sync with CRM', {
+          description: 'Your form data is still saved locally',
+        });
       }
       
       onNext();
@@ -320,7 +364,7 @@ export function Step1LeadCapture({ onNext }: Step1Props) {
         </div>
 
         {/* Disclaimer */}
-        <div className="pt-4 pb-2">
+        <div className="py-2">
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
             <p className="text-sm text-gray-700 leading-relaxed">
               We treat your details and information with respect. The data provided will be kept as long as the commercial relationship is maintained or during the years necessary to comply with the legal obligations. The information you provide us with will not be transferred to any third parties without your knowledge or consent in accordance with EU GDPR regulations and LCCI Spanish mortgages laws. Fluent Finance Abroad are Bank of Spain registered mortgage intermediaries with licence number D305.
@@ -328,16 +372,12 @@ export function Step1LeadCapture({ onNext }: Step1Props) {
           </div>
         </div>
 
-        <div className="pt-6">
-          <Button 
-            type="submit" 
-            disabled={isSubmitting}
-            className="w-full text-white px-8 py-3 text-base hover:opacity-90 transition-opacity"
-            style={{ backgroundColor: '#234c8a' }}
-          >
-            {isSubmitting ? 'Processing...' : 'I Agree and Next'}
-          </Button>
-        </div>
+        <FormNavigation 
+          onNext={() => form.handleSubmit(onSubmit, onError)()} 
+          isSubmitting={isSubmitting} 
+          showBack={false}
+          showSaveForLater={false}
+        />
       </form>
     </Form>
   );

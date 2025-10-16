@@ -14,8 +14,10 @@ import {
   FormDescription,
 } from '@/components/ui/form';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { FormNavigation } from '@/components/form/form-navigation';
 import { PhoneNumberInput } from '@/components/ui/phone-input';
 import { NationalityCombobox } from '@/components/ui/nationality-combobox';
 import { CoApplicantModal } from '@/components/ui/co-applicant-modal';
@@ -40,6 +42,7 @@ const maritalStatuses = [
 export function Step2AboutYou({ onNext }: Step2Props) {
   const { step1, step2, updateStep2 } = useFormStore();
   const [showCoApplicant, setShowCoApplicant] = useState(step2.has_co_applicants);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<Step2FormData>({
     resolver: async (values, context, options) => {
@@ -74,6 +77,24 @@ export function Step2AboutYou({ onNext }: Step2Props) {
       })) || [],
     },
   });
+
+  // Reset form when step2 data changes (e.g., from localStorage or navigation)
+  useEffect(() => {
+    form.reset({
+      nationality: step2.nationality || '',
+      marital_status: step2.marital_status || undefined,
+      telephone: step2.telephone || '',
+      has_co_applicants: step2.has_co_applicants,
+      co_applicants: step2.co_applicants?.map(coApp => ({
+        ...coApp,
+        date_of_birth: coApp.date_of_birth instanceof Date 
+          ? coApp.date_of_birth 
+          : typeof coApp.date_of_birth === 'string' 
+          ? new Date(coApp.date_of_birth)
+          : coApp.date_of_birth,
+      })) || [],
+    });
+  }, [step2, form]);
 
   // Auto-detect nationality from Step 1 phone number
   useEffect(() => {
@@ -113,6 +134,7 @@ export function Step2AboutYou({ onNext }: Step2Props) {
 
   const onSubmit = async (data: Step2FormData) => {
     console.log('Step 2 Form Data:', data);
+    setIsSubmitting(true);
     
     try {
       // Transform co_applicants to match Applicant type if needed
@@ -134,6 +156,8 @@ export function Step2AboutYou({ onNext }: Step2Props) {
       console.error('Error saving Step 2 data:', error);
       // Still proceed to next step even if database sync fails
       onNext();
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -187,29 +211,22 @@ export function Step2AboutYou({ onNext }: Step2Props) {
             control={form.control}
             name="marital_status"
             render={({ field }) => (
-              <FormItem className="space-y-3">
+              <FormItem>
                 <FormLabel>Marital Status *</FormLabel>
-                <FormControl>
-                  <RadioGroup
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                    className="grid grid-cols-2 md:grid-cols-3 gap-3"
-                  >
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select your marital status" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
                     {maritalStatuses.map((status) => (
-                      <FormItem
-                        key={status.value}
-                        className="flex items-center space-x-2 space-y-0"
-                      >
-                        <FormControl>
-                          <RadioGroupItem value={status.value} />
-                        </FormControl>
-                        <FormLabel className="font-normal cursor-pointer">
-                          {status.label}
-                        </FormLabel>
-                      </FormItem>
+                      <SelectItem key={status.value} value={status.value}>
+                        {status.label}
+                      </SelectItem>
                     ))}
-                  </RadioGroup>
-                </FormControl>
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
             )}
@@ -344,15 +361,11 @@ export function Step2AboutYou({ onNext }: Step2Props) {
           )}
         </div>
 
-        <div className="pt-6">
-          <Button 
-            type="submit" 
-            className="w-full text-white px-8 py-3 text-base hover:opacity-90 transition-opacity"
-            style={{ backgroundColor: '#234c8a' }}
-          >
-            Continue
-          </Button>
-        </div>
+        <FormNavigation 
+          onNext={() => form.handleSubmit(onSubmit, onError)()} 
+          isSubmitting={isSubmitting} 
+          showSaveForLater={true}
+        />
       </form>
     </Form>
   );
