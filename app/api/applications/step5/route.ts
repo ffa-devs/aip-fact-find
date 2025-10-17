@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { updateApplicationStep5 } from '@/lib/services/supabase-service';
+import { saveStep5DataNew } from '@/lib/services/supabase-service-new';
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     console.log('📝 Saving Step 5 data for application:', applicationId);
     console.log('Step 5 data:', step5Data);
 
-    const result = await updateApplicationStep5(applicationId, step5Data);
+    const result = await saveStep5DataNew(applicationId, step5Data);
 
     if (result.error) {
       console.error('❌ Error saving Step 5:', result.error);

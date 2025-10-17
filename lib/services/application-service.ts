@@ -9,37 +9,52 @@ export interface ExistingApplicationResult {
 
 /**
  * Check if there's an existing draft application for the given email
+ * Now uses the new people/application_participants structure
  */
 export async function checkExistingApplication(email: string): Promise<ExistingApplicationResult> {
   try {
     console.log('🔍 Checking for existing application with email:', email)
     
-    // First, find applications for this email
-    const { data: applicants, error: applicantsError } = await supabase
-      .from('applicants')
-      .select('application_id')
+    // First, find the person by email
+    const { data: person, error: personError } = await supabase
+      .from('people')
+      .select('id')
       .eq('email', email.toLowerCase())
-      .eq('applicant_order', 1) // Primary applicant only
+      .single()
       
-    if (applicantsError) {
-      console.error('Error finding applicants:', applicantsError)
+    if (personError || !person) {
+      console.log('No person found with email:', email)
       return { exists: false }
     }
 
-    if (!applicants || applicants.length === 0) {
+    // Find all applications for this person where they are the primary applicant
+    const { data: participants, error: participantsError } = await supabase
+      .from('application_participants')
+      .select('application_id')
+      .eq('person_id', person.id)
+      .eq('participant_role', 'primary')
+      .eq('participant_order', 1)
+      
+    if (participantsError) {
+      console.error('Error finding application participants:', participantsError)
       return { exists: false }
     }
 
-    // Get application details
-    const applicationIds = applicants.map(a => a.application_id)
+    if (!participants || participants.length === 0) {
+      console.log('No applications found for person:', person.id)
+      return { exists: false }
+    }
+
+    // Get the most recent draft application with GHL data
+    const applicationIds = participants.map(p => p.application_id)
     const { data: applications, error: appsError } = await supabase
       .from('applications')
-      .select('id, status, ghl_contact_id, ghl_opportunity_id, current_step')
+      .select('id, status, ghl_contact_id, ghl_opportunity_id, current_step, created_at')
       .in('id', applicationIds)
       .eq('status', 'draft')
       .not('ghl_contact_id', 'is', null)
       .not('ghl_opportunity_id', 'is', null)
-      .order('current_step', { ascending: false })
+      .order('created_at', { ascending: false }) // Most recent first
 
     if (appsError) {
       console.error('Error finding applications:', appsError)
@@ -47,10 +62,12 @@ export async function checkExistingApplication(email: string): Promise<ExistingA
     }
 
     if (!applications || applications.length === 0) {
+      console.log('No valid draft applications found for person')
       return { exists: false }
     }
 
     const latestApplication = applications[0]
+    console.log(`✅ Found latest draft application: ${latestApplication.id} (step ${latestApplication.current_step})`)
 
     return {
       exists: true,

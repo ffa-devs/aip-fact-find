@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { saveStep1Data } from '@/lib/services/supabase-service';
+import { saveStep1DataNew } from '@/lib/services/supabase-service-new';
 import type { FormState } from '@/lib/types/application';
 
 // Save Step 1 data (creates applicant if doesn't exist)
@@ -23,12 +23,12 @@ export async function POST(request: NextRequest) {
         : null
     };
 
-    // Use the Supabase service function with email duplicate checking
-    const success = await saveStep1Data(applicationId, processedStep1Data);
+    // Use the new Supabase service function
+    const result = await saveStep1DataNew(applicationId, processedStep1Data);
 
-    if (!success) {
+    if (!result.success) {
       return NextResponse.json(
-        { error: 'Failed to save Step 1 data' },
+        { error: result.error || 'Failed to save Step 1 data' },
         { status: 500 }
       );
     }
