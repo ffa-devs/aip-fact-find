@@ -25,15 +25,23 @@ export function FormNavigation({
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // TODO: Implement proper "Save for Later" functionality
+  // This should:
+  // 1. Generate a magic link/token for resuming the application
+  // 2. Save current form data to database (not just browser storage)
+  // 3. Send email with magic link to continue later
+  // 4. Create resume route (/resume/[token]) to load saved state
+  // 5. Add GHL integration: tag as "AIP-Application-Incomplete-StepX"
+  // 6. Trigger follow-up automation (24h, 72h, 7d reminders)
   const handleSaveForLater = () => {
-    // Data is already saved in Zustand store automatically
-    toast.success('Progress saved!', {
-      description: 'You can continue your application later',
+    // TEMP: Currently just shows message and redirects - not actually saving properly
+    toast.info('Save for Later feature coming soon!', {
+      description: 'Your progress is auto-saved in this browser session',
     });
-    // Optional: redirect or close
-    setTimeout(() => {
-      window.location.href = '/';
-    }, 1000);
+    // Don't redirect for now since it's misleading
+    // setTimeout(() => {
+    //   window.location.href = '/';
+    // }, 1000);
   };
 
   return (
@@ -54,18 +62,19 @@ export function FormNavigation({
       </div>
 
       <div className="flex gap-3">
-        {showSaveForLater && (
+        {/* {showSaveForLater && (
           <Button
             type="button"
             variant="ghost"
             onClick={handleSaveForLater}
             disabled={isSubmitting}
-            className="text-gray-600 hover:text-gray-800 hover:bg-gray-100"
+            className="text-gray-400 hover:text-gray-500 hover:bg-gray-50 cursor-not-allowed opacity-60"
+            title="Save for Later feature coming soon"
           >
             Save for Later
           </Button>
         )}
-        
+         */}
         <Button 
           type="button" 
           size="lg" 

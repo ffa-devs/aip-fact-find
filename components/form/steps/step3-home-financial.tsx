@@ -408,13 +408,13 @@ export function Step3HomeFinancial({
             <CardHeader>
               <CardTitle className="text-lg">Dependents</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-2">
               <FormField
                 control={form.control}
                 name="has_children"
                 render={({ field }) => (
                   <FormItem className="space-y-3">
-                    <FormLabel>Do you have any children or dependents?</FormLabel>
+                    <FormLabel>Do you have any children or others who rely on your income?<span className="text-muted-foreground">(excluding independent adults)</span></FormLabel>
                     <FormControl>
                       <RadioGroup
                         onValueChange={(value) => {

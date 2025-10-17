@@ -8,6 +8,7 @@ import { Step3MultiApplicant } from './steps/step3-multi-applicant'
 import { Step4MultiApplicant } from './steps/step4-multi-applicant'
 import { Step5Portfolio } from './steps/step5-portfolio'
 import { Step6SpanishProperty } from './steps/step6-spanish-property'
+import { ApplicationThankYou } from './application-thank-you'
 import { RetrieveApplicationDialog } from './retrieve-application-dialog'
 import { useEffect, useState } from 'react'
 import { SidebarProvider, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar'
@@ -23,6 +24,7 @@ export function MultiStepForm() {
     currentStep,
     nextStep,
     applicationId,
+    isCompleted,
     loadApplication,
     saveCurrentProgress,
     lastError,
@@ -184,11 +186,17 @@ export function MultiStepForm() {
 
         <div className="flex-1 space-y-4 p-6">
           <div className="max-w-3xl space-y-6">
-            <div className=" space-y-2">
-              <h2 className="text-2xl font-bold text-gray-900">{getStepTitle()}</h2>
-              <p className="text-gray-600">{getStepSubtitle()}</p>
-            </div>
-            {renderStep()}
+            {isCompleted ? (
+              <ApplicationThankYou />
+            ) : (
+              <>
+                <div className=" space-y-2">
+                  <h2 className="text-2xl font-bold text-gray-900">{getStepTitle()}</h2>
+                  <p className="text-gray-600">{getStepSubtitle()}</p>
+                </div>
+                {renderStep()}
+              </>
+            )}
           </div>
         </div>
       </SidebarInset>

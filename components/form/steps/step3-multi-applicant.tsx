@@ -212,14 +212,14 @@ export function Step3MultiApplicant({ onNext }: Step3MultiApplicantProps) {
         </Button>
         
         <div className="flex gap-4">
-          <Button
+          {/* <Button
             type="button"
             variant="outline"
             className="px-8 py-3"
           >
             Save for Later
           </Button>
-          
+           */}
           <Button
             onClick={handleContinue}
             className="px-8 py-3 text-white"

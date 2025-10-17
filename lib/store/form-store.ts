@@ -14,6 +14,7 @@ import {
   loadApplicationData,
 } from '@/lib/services/api-service';
 import { transformDatabaseToFormState } from '@/lib/services/supabase-service';
+import { completeApplicationInGHL } from '@/lib/ghl/service';
 
 const initialState: FormState = {
   step1: {
@@ -77,6 +78,7 @@ const initialState: FormState = {
   applicationId: null,
   ghlContactId: null, // Track GHL contact ID
   ghlOpportunityId: null, // Track GHL opportunity ID
+  isCompleted: false, // Track if application has been fully submitted
   lastError: null
 };
 
@@ -98,6 +100,7 @@ interface FormActions {
   setApplicationId: (id: string) => void;
   setGhlContactId: (id: string) => void;
   setGhlOpportunityId: (id: string) => void;
+  setCompleted: (completed: boolean) => void;
   nextStep: () => void;
   previousStep: () => void;
   resetForm: () => void;
@@ -221,6 +224,35 @@ export const useFormStore = create<FormState & FormActions>()(
           const result = await saveStep6Data(state.applicationId, { ...state.step6, ...data });
           if (result.error) {
             set({ lastError: result.error });
+          } else {
+            // Mark application as completed when Step 6 is successfully saved
+            set({ isCompleted: true });
+            
+            // Update GHL opportunity when application is completed
+            try {
+              if (state.ghlContactId && state.ghlOpportunityId) {
+                const step6Data = { ...state.step6, ...data };
+                
+                await completeApplicationInGHL(
+                  state.ghlContactId,
+                  state.ghlOpportunityId,
+                  {
+                    purchase_price: step6Data.purchase_price || 0,
+                    deposit_available: step6Data.deposit_available || 0,
+                    property_type: step6Data.property_type || '',
+                    home_status: step6Data.home_status || '',
+                    urgency_level: step6Data.urgency_level || '',
+                  }
+                );
+                
+                console.log('✅ GHL opportunity updated successfully');
+              } else {
+                console.warn('⚠️ Missing GHL contact or opportunity ID - skipping GHL update');
+              }
+            } catch (error) {
+              console.error('❌ Failed to update GHL opportunity:', error);
+              // Don't fail the form submission if GHL update fails
+            }
           }
         }
       },
@@ -255,6 +287,8 @@ export const useFormStore = create<FormState & FormActions>()(
       setGhlContactId: (id) => set({ ghlContactId: id }),
 
       setGhlOpportunityId: (id) => set({ ghlOpportunityId: id }),
+
+      setCompleted: (completed) => set({ isCompleted: completed }),
 
       nextStep: () =>
         set((state) => ({

@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase/client';
+import { supabaseAdmin as supabase } from '@/lib/supabase/server';
 import { FormState } from '@/lib/types/application';
 
 /**
@@ -117,7 +117,16 @@ export async function findOrCreatePerson(personData: {
 
     if (createError) {
       console.error('Error creating person:', createError);
-      return { success: false, error: 'Failed to create person' };
+      console.error('Person data being inserted:', {
+        email: personData.email.toLowerCase(),
+        first_name: personData.first_name,
+        last_name: personData.last_name,
+        date_of_birth: personData.date_of_birth.toISOString().split('T')[0],
+        telephone: personData.telephone,
+        mobile: personData.mobile,
+        nationality: personData.nationality
+      });
+      return { success: false, error: `Failed to create person: ${createError.message || createError.code}` };
     }
 
     console.log('✅ Created new person:', newPerson.id);
@@ -152,7 +161,8 @@ export async function createOrUpdateParticipant(
 
     if (findError && findError.code !== 'PGRST116') {
       console.error('Error finding participant:', findError);
-      return { success: false, error: 'Database error while finding participant' };
+      console.error('Query params:', { applicationId, personId });
+      return { success: false, error: `Database error while finding participant: ${findError.message || findError.code}` };
     }
 
     const participantPayload = {
@@ -190,7 +200,8 @@ export async function createOrUpdateParticipant(
 
       if (createError) {
         console.error('Error creating participant:', createError);
-        return { success: false, error: 'Failed to create participant' };
+        console.error('Participant payload:', participantPayload);
+        return { success: false, error: `Failed to create participant: ${createError.message || createError.code}` };
       }
 
       console.log('✅ Created new participant:', created.id);
@@ -564,42 +575,48 @@ export async function saveStep3DataNew(
       return { success: false, error: primaryError.message };
     }
 
-    // Handle children data
+    // Handle children data - children are tied to people, not participants
     if (step3Data.has_children && step3Data.children?.length > 0) {
-      // Get primary participant ID
+      // Get primary participant to find the person ID
       const { data: primaryParticipant } = await supabase
         .from('application_participants')
-        .select('id')
+        .select('person_id')
         .eq('application_id', applicationId)
         .eq('participant_role', 'primary')
         .single();
 
       if (primaryParticipant) {
-        // Delete existing children for this participant
+        // Delete existing children for this person (they get updated with new data)
         await supabase
-          .from('applicant_children')
+          .from('person_children')
           .delete()
-          .eq('participant_id', primaryParticipant.id);
+          .eq('person_id', primaryParticipant.person_id);
 
-        // Insert new children
+        // Insert new children - linked to person, not participant
         const now = new Date();
         const childrenData = step3Data.children.map((child) => {
           const birthDate = new Date(child.date_of_birth);
           const age = now.getFullYear() - birthDate.getFullYear();
           
+          // Format date properly - handle both string and Date inputs
+          const formattedDate = child.date_of_birth instanceof Date 
+            ? child.date_of_birth.toISOString().split('T')[0]
+            : new Date(child.date_of_birth).toISOString().split('T')[0];
+          
           return {
-            participant_id: primaryParticipant.id,
+            person_id: primaryParticipant.person_id,
+            date_of_birth: formattedDate,
             age: age,
           };
         });
 
         const { error: childrenError } = await supabase
-          .from('applicant_children')
+          .from('person_children')
           .insert(childrenData);
 
         if (childrenError) {
           console.error('Error saving children:', childrenError);
-          return { success: false, error: childrenError.message };
+          return { success: false, error: `Failed to save children: ${childrenError.message}` };
         }
       }
     }
@@ -632,42 +649,48 @@ export async function saveStep3DataNew(
           return { success: false, error: coError.message };
         }
 
-        // Handle co-applicant children
+        // Handle co-applicant children - children are tied to people, not participants
         if (coApplicant.has_children && coApplicant.children?.length > 0) {
           const { data: coParticipant } = await supabase
             .from('application_participants')
-            .select('id')
+            .select('person_id')
             .eq('application_id', applicationId)
             .eq('participant_role', 'co-applicant')
             .eq('participant_order', i + 2)
             .single();
 
           if (coParticipant) {
-            // Delete existing children
+            // Delete existing children for this co-applicant person
             await supabase
-              .from('applicant_children')
+              .from('person_children')
               .delete()
-              .eq('participant_id', coParticipant.id);
+              .eq('person_id', coParticipant.person_id);
 
-            // Insert new children
+            // Insert new children - linked to co-applicant person
             const coChildrenData = coApplicant.children.map((child) => {
               const birthDate = new Date(child.date_of_birth);
               const currentYear = new Date().getFullYear();
               const age = currentYear - birthDate.getFullYear();
               
+              // Format date properly - handle both string and Date inputs
+              const formattedDate = child.date_of_birth instanceof Date 
+                ? child.date_of_birth.toISOString().split('T')[0]
+                : new Date(child.date_of_birth).toISOString().split('T')[0];
+              
               return {
-                participant_id: coParticipant.id,
+                person_id: coParticipant.person_id,
+                date_of_birth: formattedDate,
                 age: age,
               };
             });
 
             const { error: coChildrenError } = await supabase
-              .from('applicant_children')
+              .from('person_children')
               .insert(coChildrenData);
 
             if (coChildrenError) {
               console.error(`Error saving co-applicant ${i + 1} children:`, coChildrenError);
-              return { success: false, error: coChildrenError.message };
+              return { success: false, error: `Failed to save co-applicant children: ${coChildrenError.message}` };
             }
           }
         }
@@ -707,7 +730,22 @@ export async function saveStep4DataNew(
       return { success: false, error: stepError.message };
     }
 
-    // Handle primary applicant employment
+    // Update primary applicant employment status in application_participants
+    const { error: primaryStatusError } = await supabase
+      .from('application_participants')
+      .update({
+        employment_status: step4Data.employment_status,
+        updated_at: new Date().toISOString()
+      })
+      .eq('application_id', applicationId)
+      .eq('participant_role', 'primary');
+
+    if (primaryStatusError) {
+      console.error('Error updating primary employment status:', primaryStatusError);
+      return { success: false, error: primaryStatusError.message };
+    }
+
+    // Handle primary applicant employment details
     if (step4Data.employment_details) {
       const { data: primaryParticipant } = await supabase
         .from('application_participants')
@@ -723,10 +761,9 @@ export async function saveStep4DataNew(
           .delete()
           .eq('participant_id', primaryParticipant.id);
 
-        // Insert new employment details (treating employment_details as a single record)
+        // Insert new employment details (without employment_status - that's in participants table)
         const employmentData = {
           participant_id: primaryParticipant.id,
-          employment_status: step4Data.employment_status,
           ...step4Data.employment_details
         };
 
@@ -788,7 +825,21 @@ export async function saveStep4DataNew(
           .single();
 
         if (coParticipant) {
-          // Handle co-applicant employment
+          // Update co-applicant employment status in application_participants
+          const { error: coStatusError } = await supabase
+            .from('application_participants')
+            .update({
+              employment_status: coApplicant.employment_status,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', coParticipant.id);
+
+          if (coStatusError) {
+            console.error(`Error updating co-applicant ${i + 1} employment status:`, coStatusError);
+            return { success: false, error: coStatusError.message };
+          }
+
+          // Handle co-applicant employment details
           if (coApplicant.employment_details) {
             await supabase
               .from('employment_details')
@@ -797,7 +848,6 @@ export async function saveStep4DataNew(
 
             const coEmploymentData = {
               participant_id: coParticipant.id,
-              employment_status: coApplicant.employment_status,
               ...coApplicant.employment_details
             };
 
@@ -941,8 +991,8 @@ export async function saveStep6DataNew(
         urgency_level: step6Data.urgency_level,
         real_estate_agent_contact: step6Data.real_estate_agent_contact,
         lawyer_contact: step6Data.lawyer_contact,
-        additional_information: step6Data.additional_information,
-        authorization_consent: step6Data.authorization_consent,
+        additional_notes: step6Data.additional_information, // Map to existing column
+        // Note: authorization_consent is not stored in DB, just used for form validation
         
         updated_at: new Date().toISOString()
       })

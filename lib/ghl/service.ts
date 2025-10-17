@@ -320,12 +320,15 @@ export async function completeApplicationInGHL(
 
   await ghlClient.updateContact(contactId, { tags })
 
-  // Move opportunity to "AIP Fact Find Submitted" stage
+  // Move opportunity to "AIP Fact Find Submitted" stage and set monetary value
   const submittedStageId = getStageIdByName('AIP Fact Find Submitted')
 
   if (submittedStageId && opportunityId) {
-    await ghlClient.updateOpportunityStage(opportunityId, submittedStageId)
-    console.log('✅ Opportunity moved to "AIP Fact Find Submitted" stage')
+    await ghlClient.updateOpportunity(opportunityId, {
+      pipelineStageId: submittedStageId,
+      monetaryValue: data.deposit_available,
+    })
+    console.log('✅ Opportunity updated: stage = "AIP Fact Find Submitted", value =', data.deposit_available)
   }
 }
 
