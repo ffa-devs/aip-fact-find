@@ -11,35 +11,35 @@ BEGIN
   -- Drop applicant_children constraint if it exists
   IF EXISTS (SELECT 1 FROM information_schema.table_constraints 
              WHERE constraint_name = 'applicant_children_applicant_id_fkey') THEN
-    ALTER TABLE applicant_children DROP CONSTRAINT applicant_children_applicant_id_fkey;
+    ALTER TABLE applicant_children DROP CONSTRAINT IF EXISTS applicant_children_applicant_id_fkey;
     RAISE NOTICE 'Dropped applicant_children_applicant_id_fkey constraint';
   END IF;
 
   -- Drop employment_details constraint if it exists
   IF EXISTS (SELECT 1 FROM information_schema.table_constraints 
              WHERE constraint_name = 'employment_details_applicant_id_fkey') THEN
-    ALTER TABLE employment_details DROP CONSTRAINT employment_details_applicant_id_fkey;
+    ALTER TABLE employment_details DROP CONSTRAINT IF EXISTS employment_details_applicant_id_fkey;
     RAISE NOTICE 'Dropped employment_details_applicant_id_fkey constraint';
   END IF;
 
   -- Drop financial_commitments constraint if it exists
   IF EXISTS (SELECT 1 FROM information_schema.table_constraints 
              WHERE constraint_name = 'financial_commitments_applicant_id_fkey') THEN
-    ALTER TABLE financial_commitments DROP CONSTRAINT financial_commitments_applicant_id_fkey;
+    ALTER TABLE financial_commitments DROP CONSTRAINT IF EXISTS financial_commitments_applicant_id_fkey;
     RAISE NOTICE 'Dropped financial_commitments_applicant_id_fkey constraint';
   END IF;
 
   -- Drop rental_properties constraint if it exists
   IF EXISTS (SELECT 1 FROM information_schema.table_constraints 
              WHERE constraint_name = 'rental_properties_applicant_id_fkey') THEN
-    ALTER TABLE rental_properties DROP CONSTRAINT rental_properties_applicant_id_fkey;
+    ALTER TABLE rental_properties DROP CONSTRAINT IF EXISTS rental_properties_applicant_id_fkey;
     RAISE NOTICE 'Dropped rental_properties_applicant_id_fkey constraint';
   END IF;
 
   -- Drop additional_assets constraint if it exists
   IF EXISTS (SELECT 1 FROM information_schema.table_constraints 
              WHERE constraint_name = 'additional_assets_applicant_id_fkey') THEN
-    ALTER TABLE additional_assets DROP CONSTRAINT additional_assets_applicant_id_fkey;
+    ALTER TABLE additional_assets DROP CONSTRAINT IF EXISTS additional_assets_applicant_id_fkey;
     RAISE NOTICE 'Dropped additional_assets_applicant_id_fkey constraint';
   END IF;
 END $$;
@@ -50,14 +50,14 @@ BEGIN
   -- Drop co_applicant_employment_details constraints if they exist
   IF EXISTS (SELECT 1 FROM information_schema.table_constraints 
              WHERE constraint_name = 'co_applicant_employment_details_co_applicant_id_fkey') THEN
-    ALTER TABLE co_applicant_employment_details DROP CONSTRAINT co_applicant_employment_details_co_applicant_id_fkey;
+    ALTER TABLE co_applicant_employment_details DROP CONSTRAINT IF EXISTS co_applicant_employment_details_co_applicant_id_fkey;
     RAISE NOTICE 'Dropped co_applicant_employment_details constraint';
   END IF;
 
   -- Drop co_applicant_children constraints if they exist
   IF EXISTS (SELECT 1 FROM information_schema.table_constraints 
              WHERE constraint_name = 'co_applicant_children_co_applicant_id_fkey') THEN
-    ALTER TABLE co_applicant_children DROP CONSTRAINT co_applicant_children_co_applicant_id_fkey;
+    ALTER TABLE co_applicant_children DROP CONSTRAINT IF EXISTS co_applicant_children_co_applicant_id_fkey;
     RAISE NOTICE 'Dropped co_applicant_children constraint';
   END IF;
 END $$;
@@ -72,35 +72,35 @@ BEGIN
   -- Remove applicant_id from applicant_children if it exists
   IF EXISTS (SELECT 1 FROM information_schema.columns 
              WHERE table_name = 'applicant_children' AND column_name = 'applicant_id') THEN
-    ALTER TABLE applicant_children DROP COLUMN applicant_id;
+    ALTER TABLE applicant_children DROP COLUMN IF EXISTS applicant_id;
     RAISE NOTICE 'Dropped applicant_id column from applicant_children';
   END IF;
 
   -- Remove applicant_id from employment_details if it exists
   IF EXISTS (SELECT 1 FROM information_schema.columns 
              WHERE table_name = 'employment_details' AND column_name = 'applicant_id') THEN
-    ALTER TABLE employment_details DROP COLUMN applicant_id;
+    ALTER TABLE employment_details DROP COLUMN IF EXISTS applicant_id;
     RAISE NOTICE 'Dropped applicant_id column from employment_details';
   END IF;
 
   -- Remove applicant_id from financial_commitments if it exists
   IF EXISTS (SELECT 1 FROM information_schema.columns 
              WHERE table_name = 'financial_commitments' AND column_name = 'applicant_id') THEN
-    ALTER TABLE financial_commitments DROP COLUMN applicant_id;
+    ALTER TABLE financial_commitments DROP COLUMN IF EXISTS applicant_id;
     RAISE NOTICE 'Dropped applicant_id column from financial_commitments';
   END IF;
 
   -- Remove applicant_id from rental_properties if it exists
   IF EXISTS (SELECT 1 FROM information_schema.columns 
              WHERE table_name = 'rental_properties' AND column_name = 'applicant_id') THEN
-    ALTER TABLE rental_properties DROP COLUMN applicant_id;
+    ALTER TABLE rental_properties DROP COLUMN IF EXISTS applicant_id;
     RAISE NOTICE 'Dropped applicant_id column from rental_properties';
   END IF;
 
   -- Remove applicant_id from additional_assets if it exists
   IF EXISTS (SELECT 1 FROM information_schema.columns 
              WHERE table_name = 'additional_assets' AND column_name = 'applicant_id') THEN
-    ALTER TABLE additional_assets DROP COLUMN applicant_id;
+    ALTER TABLE additional_assets DROP COLUMN IF EXISTS applicant_id;
     RAISE NOTICE 'Dropped applicant_id column from additional_assets';
   END IF;
 END $$;
@@ -112,16 +112,12 @@ END $$;
 DROP TABLE IF EXISTS applicants_backup;
 DROP TABLE IF EXISTS co_applicants_backup;
 
-RAISE NOTICE 'Dropped backup tables';
-
 -- =====================================================
 -- 4. DROP REDUNDANT VIEWS
 -- =====================================================
 
 DROP VIEW IF EXISTS application_participants_full;
 DROP VIEW IF EXISTS primary_applicants;
-
-RAISE NOTICE 'Dropped redundant views';
 
 -- =====================================================
 -- 5. DROP LEGACY CO-APPLICANT TABLES
@@ -131,15 +127,11 @@ DROP TABLE IF EXISTS co_applicant_children;
 DROP TABLE IF EXISTS co_applicant_employment_details;
 DROP TABLE IF EXISTS co_applicants;
 
-RAISE NOTICE 'Dropped legacy co-applicant tables';
-
 -- =====================================================
 -- 6. DROP LEGACY APPLICANTS TABLE
 -- =====================================================
 
 DROP TABLE IF EXISTS applicants;
-
-RAISE NOTICE 'Dropped legacy applicants table';
 
 -- =====================================================
 -- 7. CLEANUP TEMPORARY MIGRATION COLUMNS
