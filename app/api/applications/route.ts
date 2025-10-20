@@ -49,15 +49,15 @@ export async function GET(request: NextRequest) {
       .from('applications')
       .select(`
         *,
-        applicants (
+        application_participants (
           *,
-          applicant_children (*),
+          people (
+            *,
+            person_children (*)
+          ),
           employment_details (*),
           financial_commitments (*)
-        ),
-        rental_properties (*),
-        additional_assets (*),
-        form_progress (*)
+        )
       `)
       .eq('id', applicationId)
       .single();
@@ -68,6 +68,24 @@ export async function GET(request: NextRequest) {
         { error: 'Failed to load application', details: error.message },
         { status: 500 }
       );
+    }
+
+    // Fetch rental properties separately for each participant
+    if (data?.application_participants?.length > 0) {
+      for (let i = 0; i < data.application_participants.length; i++) {
+        const participant = data.application_participants[i];
+        
+        const { data: rentalProperties, error: rentalError } = await supabaseAdmin
+          .from('rental_properties')
+          .select('*')
+          .eq('participant_id', participant.id);
+
+        if (!rentalError && rentalProperties) {
+          data.application_participants[i].rental_properties = rentalProperties;
+        } else {
+          data.application_participants[i].rental_properties = [];
+        }
+      }
     }
 
     return NextResponse.json(data);

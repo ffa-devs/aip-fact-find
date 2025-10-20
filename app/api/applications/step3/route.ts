@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { saveStep3DataNew } from '@/lib/services/supabase-service-new';
+import { saveStep3DataNew } from '@/lib/services/supabase-service';
 
 export async function POST(request: NextRequest) {
   try {

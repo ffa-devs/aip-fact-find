@@ -194,13 +194,6 @@ export function Step3HomeFinancial({
     <Form {...form}>
       <form className="space-y-6">
         <div className="space-y-6">
-          <div>
-            <h2 className="text-2xl font-bold">Your Home & Financial Position</h2>
-            <p className="text-muted-foreground mt-1">
-              Tell us about your current living situation and financial commitments
-            </p>
-          </div>
-
           {/* Current Address Section */}
           <Card>
             <CardHeader>
@@ -534,7 +527,7 @@ export function Step3HomeFinancial({
           </Card>
         </div>
 
-        {!hideNavigation && <FormNavigation onNext={() => form.handleSubmit(onSubmit, onError)()} showSaveForLater={true} />}
+        {!hideNavigation && <FormNavigation onNext={() => form.handleSubmit(onSubmit, onError)()} />}
       </form>
     </Form>
   );

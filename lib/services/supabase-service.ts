@@ -1,52 +1,32 @@
-import { supabase } from '@/lib/supabase/client';
+import { supabaseAdmin as supabase } from '@/lib/supabase/server';
 import { FormState } from '@/lib/types/application';
 
 /**
- * Supabase Data Service for AIP Application Form
- * 
- * Handles all database operations for the multi-step application form:
- * - Create/update applications
- * - Manage applicants (primary + co-applicants)
- * - Store employment details and financial commitments
- * - Handle rental properties and additional assets
- * - Track form progress for resume functionality
+ * NEW SERVICE FUNCTIONS FOR NORMALIZED SCHEMA
+ * These functions work with the new people/application_participants structure
  */
 
-export interface DatabaseApplication {
+export interface Person {
   id: string;
-  status: string;
-  current_step: number;
-  progress_percentage: number;
-  ghl_contact_id?: string;
-  ghl_opportunity_id?: string;
-  urgency_level?: string;
-  purchase_price?: number;
-  deposit_available?: number;
-  property_address?: string;
-  property_type?: string;
-  home_status?: string;
-  real_estate_agent_contact?: string;
-  lawyer_contact?: string;
-  additional_notes?: string;
-  created_at: string;
-  updated_at: string;
-  submitted_at?: string;
-  draft_data?: Record<string, unknown>;
-}
-
-export interface DatabaseApplicant {
-  id: string;
-  application_id: string;
-  applicant_order: number;
+  email: string;
   first_name: string;
   last_name: string;
   date_of_birth: string;
-  age?: number;
-  nationality?: string;
-  marital_status?: string;
   telephone?: string;
   mobile: string;
-  email: string;
+  nationality?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ApplicationParticipant {
+  id: string;
+  application_id: string;
+  person_id: string;
+  participant_role: 'primary' | 'co-applicant';
+  participant_order: number;
+  marital_status?: string;
+  age?: number;
   current_address?: string;
   time_at_current_address_years?: number;
   time_at_current_address_months?: number;
@@ -60,349 +40,1106 @@ export interface DatabaseApplicant {
   mortgage_outstanding?: number;
   lender_or_landlord_details?: string;
   employment_status?: string;
+  relationship_to_primary?: string;
+  same_address_as_primary?: boolean;
   created_at: string;
   updated_at: string;
 }
 
 /**
- * Create a new application in the database
+ * Find or create a person by email and basic info
  */
-export async function createApplication(): Promise<DatabaseApplication | null> {
+export async function findOrCreatePerson(personData: {
+  email: string;
+  first_name: string;
+  last_name: string;
+  date_of_birth: Date;
+  telephone?: string;
+  mobile: string;
+  nationality?: string;
+}): Promise<{ success: boolean; person?: Person; error?: string }> {
   try {
-    console.log('Creating application in Supabase...');
-    const { data, error } = await supabase
-      .from('applications')
-      .insert({
-        status: 'draft',
-        current_step: 1,
-        progress_percentage: 0,
-      })
+    console.log('🔍 Finding or creating person with email:', personData.email);
+
+    // First try to find existing person
+    const { data: existingPerson, error: findError } = await supabase
+      .from('people')
       .select('*')
+      .eq('email', personData.email.toLowerCase())
       .single();
 
-    if (error) {
-      console.error('Supabase error creating application:', error);
-      console.error('Error details:', {
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code
+    if (findError && findError.code !== 'PGRST116') { // PGRST116 = no rows returned
+      console.error('Error finding person:', findError);
+      return { success: false, error: 'Database error while finding person' };
+    }
+
+    if (existingPerson) {
+      console.log('✅ Found existing person:', existingPerson.id);
+      
+      // Update person data if needed (keep most recent info)
+      const { data: updatedPerson, error: updateError } = await supabase
+        .from('people')
+        .update({
+          first_name: personData.first_name,
+          last_name: personData.last_name,
+          date_of_birth: personData.date_of_birth.toISOString().split('T')[0],
+          telephone: personData.telephone,
+          mobile: personData.mobile,
+          nationality: personData.nationality,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existingPerson.id)
+        .select()
+        .single();
+
+      if (updateError) {
+        console.error('Error updating person:', updateError);
+        return { success: false, error: 'Failed to update person data' };
+      }
+
+      return { success: true, person: updatedPerson };
+    }
+
+    // Create new person
+    const { data: newPerson, error: createError } = await supabase
+      .from('people')
+      .insert({
+        email: personData.email.toLowerCase(),
+        first_name: personData.first_name,
+        last_name: personData.last_name,
+        date_of_birth: personData.date_of_birth.toISOString().split('T')[0],
+        telephone: personData.telephone,
+        mobile: personData.mobile,
+        nationality: personData.nationality
+      })
+      .select()
+      .single();
+
+    if (createError) {
+      console.error('Error creating person:', createError);
+      console.error('Person data being inserted:', {
+        email: personData.email.toLowerCase(),
+        first_name: personData.first_name,
+        last_name: personData.last_name,
+        date_of_birth: personData.date_of_birth.toISOString().split('T')[0],
+        telephone: personData.telephone,
+        mobile: personData.mobile,
+        nationality: personData.nationality
       });
+      return { success: false, error: `Failed to create person: ${createError.message || createError.code}` };
+    }
+
+    console.log('✅ Created new person:', newPerson.id);
+    return { success: true, person: newPerson };
+
+  } catch (error) {
+    console.error('Error in findOrCreatePerson:', error);
+    return { success: false, error: 'Unexpected error' };
+  }
+}
+
+/**
+ * Create or update application participant
+ */
+export async function createOrUpdateParticipant(
+  applicationId: string,
+  personId: string,
+  participantRole: 'primary' | 'co-applicant',
+  participantOrder: number,
+  participantData: Partial<ApplicationParticipant>
+): Promise<{ success: boolean; participant?: ApplicationParticipant; error?: string }> {
+  try {
+    console.log(`🔍 Creating/updating ${participantRole} participant for application:`, applicationId);
+
+    // Check if participant already exists
+    const { data: existing, error: findError } = await supabase
+      .from('application_participants')
+      .select('*')
+      .eq('application_id', applicationId)
+      .eq('person_id', personId)
+      .single();
+
+    if (findError && findError.code !== 'PGRST116') {
+      console.error('Error finding participant:', findError);
+      console.error('Query params:', { applicationId, personId });
+      return { success: false, error: `Database error while finding participant: ${findError.message || findError.code}` };
+    }
+
+    const participantPayload = {
+      application_id: applicationId,
+      person_id: personId,
+      participant_role: participantRole,
+      participant_order: participantOrder,
+      ...participantData,
+      updated_at: new Date().toISOString()
+    };
+
+    if (existing) {
+      // Update existing participant
+      const { data: updated, error: updateError } = await supabase
+        .from('application_participants')
+        .update(participantPayload)
+        .eq('id', existing.id)
+        .select()
+        .single();
+
+      if (updateError) {
+        console.error('Error updating participant:', updateError);
+        return { success: false, error: 'Failed to update participant' };
+      }
+
+      console.log('✅ Updated existing participant:', updated.id);
+      return { success: true, participant: updated };
+    } else {
+      // Create new participant
+      const { data: created, error: createError } = await supabase
+        .from('application_participants')
+        .insert(participantPayload)
+        .select()
+        .single();
+
+      if (createError) {
+        console.error('Error creating participant:', createError);
+        console.error('Participant payload:', participantPayload);
+        return { success: false, error: `Failed to create participant: ${createError.message || createError.code}` };
+      }
+
+      console.log('✅ Created new participant:', created.id);
+      return { success: true, participant: created };
+    }
+
+  } catch (error) {
+    console.error('Error in createOrUpdateParticipant:', error);
+    return { success: false, error: 'Unexpected error' };
+  }
+}
+
+/**
+ * Save Step 1 data using new schema (basic person info only)
+ */
+export async function saveStep1DataNew(
+  applicationId: string, 
+  step1Data: FormState['step1']
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    console.log('💾 Saving Step 1 data with new schema for application:', applicationId);
+
+    if (!step1Data.email || !step1Data.first_name || !step1Data.last_name || !step1Data.date_of_birth) {
+      return { success: false, error: 'Missing required fields' };
+    }
+
+    // 1. Find or create person (Step 1 only has basic info)
+    const personResult = await findOrCreatePerson({
+      email: step1Data.email,
+      first_name: step1Data.first_name,
+      last_name: step1Data.last_name,
+      date_of_birth: step1Data.date_of_birth,
+      mobile: step1Data.mobile
+    });
+
+    if (!personResult.success || !personResult.person) {
+      return { success: false, error: personResult.error || 'Failed to create person' };
+    }
+
+    // 2. Create basic application participant (just link person to application)
+    const participantResult = await createOrUpdateParticipant(
+      applicationId,
+      personResult.person.id,
+      'primary',
+      1,
+      {} // No additional data in Step 1
+    );
+
+    if (!participantResult.success) {
+      return { success: false, error: participantResult.error || 'Failed to create participant' };
+    }
+
+    console.log('✅ Successfully saved Step 1 data with new schema');
+    return { success: true };
+
+  } catch (error) {
+    console.error('Error in saveStep1DataNew:', error);
+    return { success: false, error: 'Unexpected error saving Step 1 data' };
+  }
+}
+
+/**
+ * Save Step 2 data using new schema (nationality, marital status, phone, co-applicants)
+ */
+export async function saveStep2DataNew(
+  applicationId: string,
+  step2Data: FormState['step2']
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    console.log('💾 Saving Step 2 data with new schema for application:', applicationId);
+
+    // Find the primary participant for this application
+    const { data: primaryParticipant, error: findError } = await supabase
+      .from('application_participants')
+      .select('id, person_id')
+      .eq('application_id', applicationId)
+      .eq('participant_role', 'primary')
+      .eq('participant_order', 1)
+      .single();
+
+    if (findError || !primaryParticipant) {
+      return { success: false, error: 'Primary participant not found' };
+    }
+
+    // Update person with nationality and telephone
+    const { error: personUpdateError } = await supabase
+      .from('people')
+      .update({
+        nationality: step2Data.nationality,
+        telephone: step2Data.telephone,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', primaryParticipant.person_id);
+
+    if (personUpdateError) {
+      console.error('Error updating person:', personUpdateError);
+      return { success: false, error: 'Failed to update person data' };
+    }
+
+    // Update participant with marital status
+    const { error: participantUpdateError } = await supabase
+      .from('application_participants')
+      .update({
+        marital_status: step2Data.marital_status,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', primaryParticipant.id);
+
+    if (participantUpdateError) {
+      console.error('Error updating participant:', participantUpdateError);
+      return { success: false, error: 'Failed to update participant data' };
+    }
+
+    // Handle co-applicants if they exist
+    if (step2Data.has_co_applicants && step2Data.co_applicants?.length > 0) {
+      // Remove existing co-applicants first
+      await supabase
+        .from('application_participants')
+        .delete()
+        .eq('application_id', applicationId)
+        .eq('participant_role', 'co-applicant');
+
+      // Add new co-applicants
+      for (let i = 0; i < step2Data.co_applicants.length; i++) {
+        const coApplicant = step2Data.co_applicants[i];
+        
+        // Find or create person for co-applicant
+        const coPersonResult = await findOrCreatePerson({
+          email: coApplicant.email,
+          first_name: coApplicant.first_name,
+          last_name: coApplicant.last_name,
+          date_of_birth: coApplicant.date_of_birth,
+          mobile: coApplicant.mobile,
+          telephone: coApplicant.telephone,
+          nationality: coApplicant.nationality
+        });
+
+        if (coPersonResult.success && coPersonResult.person) {
+          // Create co-applicant participant
+          await createOrUpdateParticipant(
+            applicationId,
+            coPersonResult.person.id,
+            'co-applicant',
+            i + 2, // Start from 2 (after primary)
+            {
+              marital_status: coApplicant.marital_status,
+              age: coApplicant.age,
+              employment_status: coApplicant.employment_status
+            }
+          );
+        }
+      }
+    } else {
+      // Remove co-applicants if has_co_applicants is false
+      await supabase
+        .from('application_participants')
+        .delete()
+        .eq('application_id', applicationId)
+        .eq('participant_role', 'co-applicant');
+    }
+
+    console.log('✅ Successfully saved Step 2 data with new schema');
+    return { success: true };
+
+  } catch (error) {
+    console.error('Error in saveStep2DataNew:', error);
+    return { success: false, error: 'Unexpected error saving Step 2 data' };
+  }
+}
+
+/**
+ * Load application data using new schema
+ */
+export async function loadApplicationDataNew(applicationId: string): Promise<{
+  success: boolean;
+  data?: {
+    application: Record<string, unknown>;
+    participants: ApplicationParticipant[];
+    primaryApplicant: Person;
+  };
+  error?: string;
+}> {
+  try {
+    console.log('📖 Loading application data with new schema:', applicationId);
+
+    // Get application details
+    const { data: application, error: appError } = await supabase
+      .from('applications')
+      .select('*')
+      .eq('id', applicationId)
+      .single();
+
+    if (appError) {
+      console.error('Error loading application:', appError);
+      return { success: false, error: 'Application not found' };
+    }
+
+    // Get all participants with person data
+    const { data: participantsWithPeople, error: participantsError } = await supabase
+      .from('application_participants_full')
+      .select('*')
+      .eq('application_id', applicationId)
+      .order('participant_role', { ascending: true })
+      .order('participant_order', { ascending: true });
+
+    if (participantsError) {
+      console.error('Error loading participants:', participantsError);
+      return { success: false, error: 'Failed to load participants' };
+    }
+
+    if (!participantsWithPeople || participantsWithPeople.length === 0) {
+      return { success: false, error: 'No participants found for application' };
+    }
+
+    // Find primary applicant
+    const primaryParticipant = participantsWithPeople.find(
+      p => p.participant_role === 'primary' && p.participant_order === 1
+    );
+
+    if (!primaryParticipant) {
+      return { success: false, error: 'Primary applicant not found' };
+    }
+
+    const primaryApplicant: Person = {
+      id: primaryParticipant.person_id,
+      email: primaryParticipant.email,
+      first_name: primaryParticipant.first_name,
+      last_name: primaryParticipant.last_name,
+      date_of_birth: primaryParticipant.date_of_birth,
+      telephone: primaryParticipant.telephone,
+      mobile: primaryParticipant.mobile,
+      nationality: primaryParticipant.nationality,
+      created_at: primaryParticipant.person_created_at,
+      updated_at: primaryParticipant.person_updated_at
+    };
+
+    const participants: ApplicationParticipant[] = participantsWithPeople.map(p => ({
+      id: p.participant_id,
+      application_id: p.application_id,
+      person_id: p.person_id,
+      participant_role: p.participant_role as 'primary' | 'co-applicant',
+      participant_order: p.participant_order,
+      marital_status: p.marital_status,
+      age: p.age,
+      current_address: p.current_address,
+      time_at_current_address_years: p.time_at_current_address_years,
+      time_at_current_address_months: p.time_at_current_address_months,
+      previous_address: p.previous_address,
+      time_at_previous_address_years: p.time_at_previous_address_years,
+      time_at_previous_address_months: p.time_at_previous_address_months,
+      tax_country: p.tax_country,
+      homeowner_or_tenant: p.homeowner_or_tenant,
+      monthly_mortgage_or_rent: p.monthly_mortgage_or_rent,
+      current_property_value: p.current_property_value,
+      mortgage_outstanding: p.mortgage_outstanding,
+      lender_or_landlord_details: p.lender_or_landlord_details,
+      employment_status: p.employment_status,
+      relationship_to_primary: p.relationship_to_primary,
+      same_address_as_primary: p.same_address_as_primary,
+      created_at: p.participant_created_at,
+      updated_at: p.participant_updated_at
+    }));
+
+    console.log('✅ Successfully loaded application data with new schema');
+    return {
+      success: true,
+      data: {
+        application,
+        participants,
+        primaryApplicant
+      }
+    };
+
+  } catch (error) {
+    console.error('Error in loadApplicationDataNew:', error);
+    return { success: false, error: 'Unexpected error loading application data' };
+  }
+}
+
+/**
+ * Check if email exists for a different application (duplicate check)
+ */
+export async function checkEmailExistsNew(
+  email: string, 
+  excludeApplicationId?: string
+): Promise<{ exists: boolean; applications: string[] }> {
+  try {
+    console.log('🔍 Checking if email exists (new schema):', email);
+
+    // Find person by email
+    const { data: person, error: personError } = await supabase
+      .from('people')
+      .select('id')
+      .eq('email', email.toLowerCase())
+      .single();
+
+    if (personError || !person) {
+      return { exists: false, applications: [] };
+    }
+
+    // Find all applications for this person
+    let query = supabase
+      .from('application_participants')
+      .select('application_id')
+      .eq('person_id', person.id);
+
+    if (excludeApplicationId) {
+      query = query.neq('application_id', excludeApplicationId);
+    }
+
+    const { data: participants, error: participantsError } = await query;
+
+    if (participantsError) {
+      console.error('Error finding participants:', participantsError);
+      return { exists: false, applications: [] };
+    }
+
+    const applications = participants?.map(p => p.application_id) || [];
+    
+    console.log(`Email ${email} exists in ${applications.length} applications`);
+    return { exists: applications.length > 0, applications };
+
+  } catch (error) {
+    console.error('Error in checkEmailExistsNew:', error);
+    return { exists: false, applications: [] };
+  }
+}
+
+/**
+ * Save Step 3 data (Your Home) for the new normalized schema
+ */
+export async function saveStep3DataNew(
+  applicationId: string,
+  step3Data: FormState['step3']
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    console.log('💾 Saving Step 3 data for application:', applicationId);
+    
+    // Update current step
+    const { error: stepError } = await supabase
+      .from('applications')
+      .update({ 
+        current_step: 3,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', applicationId);
+
+    if (stepError) {
+      console.error('Error updating application step:', stepError);
+      return { success: false, error: stepError.message };
+    }
+
+    // Update primary applicant participant data
+    const { error: primaryError } = await supabase
+      .from('application_participants')
+      .update({
+        current_address: step3Data.current_address,
+        homeowner_or_tenant: step3Data.homeowner_or_tenant,
+        monthly_mortgage_or_rent: step3Data.monthly_mortgage_or_rent,
+        current_property_value: step3Data.current_property_value,
+        mortgage_outstanding: step3Data.mortgage_outstanding,
+        lender_or_landlord_details: step3Data.lender_or_landlord_details,
+        tax_country: step3Data.tax_country,
+        updated_at: new Date().toISOString()
+      })
+      .eq('application_id', applicationId)
+      .eq('participant_role', 'primary');
+
+    if (primaryError) {
+      console.error('Error updating primary participant:', primaryError);
+      return { success: false, error: primaryError.message };
+    }
+
+    // Handle children data - children are tied to people, not participants
+    if (step3Data.has_children && step3Data.children?.length > 0) {
+      // Get primary participant to find the person ID
+      const { data: primaryParticipant } = await supabase
+        .from('application_participants')
+        .select('person_id')
+        .eq('application_id', applicationId)
+        .eq('participant_role', 'primary')
+        .single();
+
+      if (primaryParticipant) {
+        // Delete existing children for this person (they get updated with new data)
+        await supabase
+          .from('person_children')
+          .delete()
+          .eq('person_id', primaryParticipant.person_id);
+
+        // Insert new children - linked to person, not participant
+        const now = new Date();
+        const childrenData = step3Data.children.map((child) => {
+          const birthDate = new Date(child.date_of_birth);
+          const age = now.getFullYear() - birthDate.getFullYear();
+          
+          // Format date properly - handle both string and Date inputs
+          const formattedDate = child.date_of_birth instanceof Date 
+            ? child.date_of_birth.toISOString().split('T')[0]
+            : new Date(child.date_of_birth).toISOString().split('T')[0];
+          
+          return {
+            person_id: primaryParticipant.person_id,
+            date_of_birth: formattedDate,
+            age: age,
+          };
+        });
+
+        const { error: childrenError } = await supabase
+          .from('person_children')
+          .insert(childrenData);
+
+        if (childrenError) {
+          console.error('Error saving children:', childrenError);
+          return { success: false, error: `Failed to save children: ${childrenError.message}` };
+        }
+      }
+    }
+
+    // Handle co-applicants
+    if (step3Data.co_applicants?.length > 0) {
+      for (let i = 0; i < step3Data.co_applicants.length; i++) {
+        const coApplicant = step3Data.co_applicants[i];
+        
+        // Update co-applicant participant data
+        const { error: coError } = await supabase
+          .from('application_participants')
+          .update({
+            current_address: coApplicant.current_address,
+            homeowner_or_tenant: coApplicant.homeowner_or_tenant,
+            monthly_mortgage_or_rent: coApplicant.monthly_mortgage_or_rent,
+            current_property_value: coApplicant.current_property_value,
+            mortgage_outstanding: coApplicant.mortgage_outstanding,
+            lender_or_landlord_details: coApplicant.lender_or_landlord_details,
+            tax_country: coApplicant.tax_country,
+            same_address_as_primary: coApplicant.same_address_as_primary,
+            updated_at: new Date().toISOString()
+          })
+          .eq('application_id', applicationId)
+          .eq('participant_role', 'co-applicant')
+          .eq('participant_order', i + 2); // Co-applicants start at order 2
+
+        if (coError) {
+          console.error(`Error updating co-applicant ${i + 1}:`, coError);
+          return { success: false, error: coError.message };
+        }
+
+        // Handle co-applicant children - children are tied to people, not participants
+        if (coApplicant.has_children && coApplicant.children?.length > 0) {
+          const { data: coParticipant } = await supabase
+            .from('application_participants')
+            .select('person_id')
+            .eq('application_id', applicationId)
+            .eq('participant_role', 'co-applicant')
+            .eq('participant_order', i + 2)
+            .single();
+
+          if (coParticipant) {
+            // Delete existing children for this co-applicant person
+            await supabase
+              .from('person_children')
+              .delete()
+              .eq('person_id', coParticipant.person_id);
+
+            // Insert new children - linked to co-applicant person
+            const coChildrenData = coApplicant.children.map((child) => {
+              const birthDate = new Date(child.date_of_birth);
+              const currentYear = new Date().getFullYear();
+              const age = currentYear - birthDate.getFullYear();
+              
+              // Format date properly - handle both string and Date inputs
+              const formattedDate = child.date_of_birth instanceof Date 
+                ? child.date_of_birth.toISOString().split('T')[0]
+                : new Date(child.date_of_birth).toISOString().split('T')[0];
+              
+              return {
+                person_id: coParticipant.person_id,
+                date_of_birth: formattedDate,
+                age: age,
+              };
+            });
+
+            const { error: coChildrenError } = await supabase
+              .from('person_children')
+              .insert(coChildrenData);
+
+            if (coChildrenError) {
+              console.error(`Error saving co-applicant ${i + 1} children:`, coChildrenError);
+              return { success: false, error: `Failed to save co-applicant children: ${coChildrenError.message}` };
+            }
+          }
+        }
+      }
+    }
+
+    console.log('✅ Step 3 data saved successfully');
+    return { success: true };
+
+  } catch (error) {
+    console.error('Error in saveStep3DataNew:', error);
+    return { success: false, error: 'Internal server error' };
+  }
+}
+
+/**
+ * Save Step 4 data (Employment) for the new normalized schema
+ */
+export async function saveStep4DataNew(
+  applicationId: string,
+  step4Data: FormState['step4']
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    console.log('💾 Saving Step 4 data for application:', applicationId);
+    
+    // Update current step
+    const { error: stepError } = await supabase
+      .from('applications')
+      .update({ 
+        current_step: 4,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', applicationId);
+
+    if (stepError) {
+      console.error('Error updating application step:', stepError);
+      return { success: false, error: stepError.message };
+    }
+
+    // Update primary applicant employment status in application_participants
+    const { error: primaryStatusError } = await supabase
+      .from('application_participants')
+      .update({
+        employment_status: step4Data.employment_status,
+        updated_at: new Date().toISOString()
+      })
+      .eq('application_id', applicationId)
+      .eq('participant_role', 'primary');
+
+    if (primaryStatusError) {
+      console.error('Error updating primary employment status:', primaryStatusError);
+      return { success: false, error: primaryStatusError.message };
+    }
+
+    // Handle primary applicant employment details
+    if (step4Data.employment_details) {
+      const { data: primaryParticipant } = await supabase
+        .from('application_participants')
+        .select('id')
+        .eq('application_id', applicationId)
+        .eq('participant_role', 'primary')
+        .single();
+
+      if (primaryParticipant) {
+        // Delete existing employment details
+        await supabase
+          .from('employment_details')
+          .delete()
+          .eq('participant_id', primaryParticipant.id);
+
+        // Insert new employment details (without employment_status - that's in participants table)
+        const employmentData = {
+          participant_id: primaryParticipant.id,
+          ...step4Data.employment_details
+        };
+
+        const { error: empError } = await supabase
+          .from('employment_details')
+          .insert(employmentData);
+
+        if (empError) {
+          console.error('Error saving employment details:', empError);
+          return { success: false, error: empError.message };
+        }
+      }
+    }
+
+    // Handle financial commitments
+    if (step4Data.financial_commitments) {
+      const { data: primaryParticipant } = await supabase
+        .from('application_participants')
+        .select('id')
+        .eq('application_id', applicationId)
+        .eq('participant_role', 'primary')
+        .single();
+
+      if (primaryParticipant) {
+        // Delete existing financial commitments
+        await supabase
+          .from('financial_commitments')
+          .delete()
+          .eq('participant_id', primaryParticipant.id);
+
+        // Insert new financial commitments (treating as a single record)
+        const financialData = {
+          participant_id: primaryParticipant.id,
+          ...step4Data.financial_commitments
+        };
+
+        const { error: finError } = await supabase
+          .from('financial_commitments')
+          .insert(financialData);
+
+        if (finError) {
+          console.error('Error saving financial commitments:', finError);
+          return { success: false, error: finError.message };
+        }
+      }
+    }
+
+    // Handle co-applicants
+    if (step4Data.co_applicants?.length > 0) {
+      for (let i = 0; i < step4Data.co_applicants.length; i++) {
+        const coApplicant = step4Data.co_applicants[i];
+        
+        const { data: coParticipant } = await supabase
+          .from('application_participants')
+          .select('id')
+          .eq('application_id', applicationId)
+          .eq('participant_role', 'co-applicant')
+          .eq('participant_order', i + 2)
+          .single();
+
+        if (coParticipant) {
+          // Update co-applicant employment status in application_participants
+          const { error: coStatusError } = await supabase
+            .from('application_participants')
+            .update({
+              employment_status: coApplicant.employment_status,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', coParticipant.id);
+
+          if (coStatusError) {
+            console.error(`Error updating co-applicant ${i + 1} employment status:`, coStatusError);
+            return { success: false, error: coStatusError.message };
+          }
+
+          // Handle co-applicant employment details
+          if (coApplicant.employment_details) {
+            await supabase
+              .from('employment_details')
+              .delete()
+              .eq('participant_id', coParticipant.id);
+
+            const coEmploymentData = {
+              participant_id: coParticipant.id,
+              ...coApplicant.employment_details
+            };
+
+            const { error: coEmpError } = await supabase
+              .from('employment_details')
+              .insert(coEmploymentData);
+
+            if (coEmpError) {
+              console.error(`Error saving co-applicant ${i + 1} employment:`, coEmpError);
+              return { success: false, error: coEmpError.message };
+            }
+          }
+
+          // Handle co-applicant financial commitments
+          if (coApplicant.financial_commitments) {
+            await supabase
+              .from('financial_commitments')
+              .delete()
+              .eq('participant_id', coParticipant.id);
+
+            const coFinancialData = {
+              participant_id: coParticipant.id,
+              ...coApplicant.financial_commitments
+            };
+
+            const { error: coFinError } = await supabase
+              .from('financial_commitments')
+              .insert(coFinancialData);
+
+            if (coFinError) {
+              console.error(`Error saving co-applicant ${i + 1} financial commitments:`, coFinError);
+              return { success: false, error: coFinError.message };
+            }
+          }
+        }
+      }
+    }
+
+    console.log('✅ Step 4 data saved successfully');
+    return { success: true };
+
+  } catch (error) {
+    console.error('Error in saveStep4DataNew:', error);
+    return { success: false, error: 'Internal server error' };
+  }
+}
+
+/**
+ * Save Step 5 data (Financial Commitments) for the new normalized schema
+ */
+export async function saveStep5DataNew(
+  applicationId: string,
+  step5Data: FormState['step5']
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    console.log('💾 Saving Step 5 data for application:', applicationId);
+    
+    // Update current step
+    const { error: stepError } = await supabase
+      .from('applications')
+      .update({ 
+        current_step: 5,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', applicationId);
+
+    if (stepError) {
+      console.error('Error updating application step:', stepError);
+      return { success: false, error: stepError.message };
+    }
+
+    // Handle primary applicant rental properties
+    if (step5Data.has_rental_properties && step5Data.rental_properties?.length > 0) {
+      const { data: primaryParticipant } = await supabase
+        .from('application_participants')
+        .select('id')
+        .eq('application_id', applicationId)
+        .eq('participant_role', 'primary')
+        .single();
+
+      if (primaryParticipant) {
+        // Delete existing rental properties
+        await supabase
+          .from('rental_properties')
+          .delete()
+          .eq('participant_id', primaryParticipant.id);
+
+        // Insert new rental properties
+        const rentalData = step5Data.rental_properties.map((rental) => ({
+          participant_id: primaryParticipant.id,
+          ...rental
+        }));
+
+        const { error: rentalError } = await supabase
+          .from('rental_properties')
+          .insert(rentalData);
+
+        if (rentalError) {
+          console.error('Error saving rental properties:', rentalError);
+          return { success: false, error: rentalError.message };
+        }
+      }
+    }
+
+    // Handle other assets if there's a separate table for them
+    // Note: The FormState has 'other_assets' as a string, but this might need 
+    // to be handled differently based on your database schema
+
+    console.log('✅ Step 5 data saved successfully');
+    return { success: true };
+
+  } catch (error) {
+    console.error('Error in saveStep5DataNew:', error);
+    return { success: false, error: 'Internal server error' };
+  }
+}
+
+/**
+ * Save Step 6 data (Additional Assets) for the new normalized schema
+ */
+export async function saveStep6DataNew(
+  applicationId: string,
+  step6Data: FormState['step6']
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    console.log('💾 Saving Step 6 data for application:', applicationId);
+    
+    // Update current step and mark as completed
+    const { error: stepError } = await supabase
+      .from('applications')
+      .update({ 
+        current_step: 6,
+        status: 'completed', // Mark application as completed
+        
+        // Store Step 6 data directly on the application since it's property-specific
+        purchase_price: step6Data.purchase_price,
+        deposit_available: step6Data.deposit_available,
+        property_address: step6Data.property_address,
+        home_status: step6Data.home_status,
+        property_type: step6Data.property_type,
+        urgency_level: step6Data.urgency_level,
+        real_estate_agent_contact: step6Data.real_estate_agent_contact,
+        lawyer_contact: step6Data.lawyer_contact,
+        additional_notes: step6Data.additional_information, // Map to existing column
+        // Note: authorization_consent is not stored in DB, just used for form validation
+        
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', applicationId);
+
+    if (stepError) {
+      console.error('Error updating application step:', stepError);
+      return { success: false, error: stepError.message };
+    }
+
+    console.log('✅ Step 6 data saved successfully - Application completed');
+    return { success: true };
+
+  } catch (error) {
+    console.error('Error in saveStep6DataNew:', error);
+    return { success: false, error: 'Internal server error' };
+  }
+}
+
+/**
+ * Transform database data from new schema back to FormState format
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function transformDatabaseToFormStateNew(dbData: any): FormState | null {
+  try {
+    if (!dbData || !dbData.application_participants) {
       return null;
     }
 
-    console.log('Successfully created application:', data);
-    return data;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const primaryParticipant = dbData.application_participants.find((p: any) => p.participant_role === 'primary');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const coParticipants = dbData.application_participants.filter((p: any) => p.participant_role === 'co-applicant');
+
+    if (!primaryParticipant?.people) {
+      return null;
+    }
+
+    const primaryPerson = primaryParticipant.people;
+
+    const formState: FormState = {
+      step1: {
+        first_name: primaryPerson.first_name || '',
+        last_name: primaryPerson.last_name || '',
+        date_of_birth: primaryPerson.date_of_birth ? new Date(primaryPerson.date_of_birth) : null,
+        email: primaryPerson.email || '',
+        mobile: primaryPerson.mobile || '',
+      },
+      step2: {
+        nationality: primaryPerson.nationality || '',
+        marital_status: primaryParticipant.marital_status || '',
+        telephone: primaryPerson.telephone || '',
+        has_co_applicants: coParticipants.length > 0,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        co_applicants: coParticipants.map((coParticipant: any) => {
+          const coPerson = coParticipant.people;
+          return {
+            first_name: coPerson.first_name,
+            last_name: coPerson.last_name,
+            date_of_birth: new Date(coPerson.date_of_birth),
+            email: coPerson.email,
+            mobile: coPerson.mobile,
+            nationality: coPerson.nationality,
+            marital_status: coParticipant.marital_status,
+            applicant_order: coParticipant.participant_order,
+          };
+        }),
+      },
+      step3: {
+        same_address_as_primary: false, // Default
+        current_address: primaryParticipant.current_address || '',
+        move_in_date: null, // Calculate from time_at_current_address if needed
+        homeowner_or_tenant: primaryParticipant.homeowner_or_tenant || '',
+        monthly_mortgage_or_rent: primaryParticipant.monthly_mortgage_or_rent || 0,
+        monthly_payment_currency: 'EUR', // Default
+        current_property_value: primaryParticipant.current_property_value || 0,
+        property_value_currency: 'EUR', // Default
+        mortgage_outstanding: primaryParticipant.mortgage_outstanding || 0,
+        mortgage_outstanding_currency: 'EUR', // Default
+        lender_or_landlord_details: primaryParticipant.lender_or_landlord_details || '',
+        previous_address: primaryParticipant.previous_address || '',
+        previous_move_in_date: null,
+        previous_move_out_date: null,
+        tax_country: primaryParticipant.tax_country || '',
+        has_children: (primaryPerson.person_children?.length || 0) > 0,
+        children: primaryPerson.person_children || [],
+        co_applicants: [], // Would need to populate this for each co-applicant
+      },
+      step4: {
+        employment_status: primaryParticipant.employment_status || '',
+        employment_details: primaryParticipant.employment_details?.[0] || {},
+        financial_commitments: primaryParticipant.financial_commitments?.[0] || {},
+        co_applicants: [], // Would need to populate this for each co-applicant
+      },
+      step5: {
+        has_rental_properties: (dbData.rental_properties?.length || 0) > 0,
+        rental_properties: dbData.rental_properties || [],
+        other_assets: dbData.additional_assets?.[0]?.asset_description || '',
+      },
+      step6: {
+        urgency_level: dbData.urgency_level || '',
+        purchase_price: dbData.purchase_price || 0,
+        deposit_available: dbData.deposit_available || 0,
+        property_address: dbData.property_address || '',
+        home_status: dbData.home_status || '',
+        property_type: dbData.property_type || '',
+        real_estate_agent_contact: dbData.real_estate_agent_contact || '',
+        lawyer_contact: dbData.lawyer_contact || '',
+        additional_information: dbData.additional_notes || '',
+        authorization_consent: dbData.status === 'submitted',
+      },
+      currentStep: dbData.current_step || 1,
+      applicationId: dbData.id,
+      isCompleted: dbData.status === 'submitted',
+      ghlContactId: dbData.ghl_contact_id,
+      ghlOpportunityId: dbData.ghl_opportunity_id || null,
+    };
+
+    return formState;
   } catch (error) {
-    console.error('Unexpected error in createApplication:', error);
+    console.error('Error transforming database data to form state:', error);
     return null;
   }
 }
 
 /**
- * Update application progress and metadata
+ * Save Step 3 data for a specific participant (for backward compatibility with applicant routes)
  */
-export async function updateApplication(
-  applicationId: string, 
-  updates: Partial<DatabaseApplication>
-): Promise<boolean> {
-  try {
-    const { error } = await supabase
-      .from('applications')
-      .update({
-        ...updates,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', applicationId);
-
-    if (error) {
-      console.error('Error updating application:', error);
-      return false;
-    }
-
-    return true;
-  } catch (error) {
-    console.error('Error in updateApplication:', error);
-    return false;
-  }
-}
-
-
-
-/**
- * Check if multiple emails already exist in the database (for co-applicant validation)
- */
-export async function checkMultipleEmailsExist(emails: string[], excludeApplicationId?: string): Promise<{
-  duplicates: Array<{
-    email: string;
-    applicationId: string;
-    applicantId: string;
-  }>;
-  hasConflicts: boolean;
-}> {
-  try {
-    console.log(`🔍 Checking ${emails.length} emails for duplicates...`);
-    
-    let query = supabase
-      .from('applicants')
-      .select('id, application_id, email')
-      .in('email', emails);
-    
-    // Exclude specific application if provided (for updates)
-    if (excludeApplicationId) {
-      query = query.neq('application_id', excludeApplicationId);
-    }
-    
-    const { data, error } = await query;
-    
-    if (error) {
-      console.error('Error checking multiple emails existence:', error);
-      return { duplicates: [], hasConflicts: false };
-    }
-    
-    if (data && data.length > 0) {
-      const duplicates = data.map(applicant => ({
-        email: applicant.email,
-        applicationId: applicant.application_id,
-        applicantId: applicant.id
-      }));
-      
-      console.log(`⚠️ Found ${duplicates.length} duplicate emails:`, duplicates.map(d => d.email).join(', '));
-      return { duplicates, hasConflicts: true };
-    }
-    
-    console.log(`✅ All ${emails.length} emails are unique`);
-    return { duplicates: [], hasConflicts: false };
-  } catch (error) {
-    console.error('Error in checkMultipleEmailsExist:', error);
-    return { duplicates: [], hasConflicts: false };
-  }
-}
-
-/**
- * Check if an email already exists in the database (across all applications)
- */
-export async function checkEmailExists(email: string, excludeApplicationId?: string): Promise<{
-  exists: boolean;
-  applicationId?: string;
-  applicantId?: string;
-}> {
-  try {
-    console.log(`🔍 Checking if email ${email} already exists in database...`);
-    
-    let query = supabase
-      .from('applicants')
-      .select('id, application_id, email')
-      .eq('email', email);
-    
-    // Exclude specific application if provided (for updates)
-    if (excludeApplicationId) {
-      query = query.neq('application_id', excludeApplicationId);
-    }
-    
-    const { data, error } = await query;
-    
-    if (error) {
-      console.error('Error checking email existence:', error);
-      return { exists: false };
-    }
-    
-    if (data && data.length > 0) {
-      const existingApplicant = data[0];
-      console.log(`⚠️ Email ${email} already exists in application ${existingApplicant.application_id}`);
-      return {
-        exists: true,
-        applicationId: existingApplicant.application_id,
-        applicantId: existingApplicant.id
-      };
-    }
-    
-    console.log(`✅ Email ${email} is unique`);
-    return { exists: false };
-  } catch (error) {
-    console.error('Error in checkEmailExists:', error);
-    return { exists: false };
-  }
-}
-
-/**
- * Save Step 1 data (Lead Capture) - Creates or updates primary applicant
- */
-export async function saveStep1Data(
+export async function saveStep3DataForParticipant(
   applicationId: string,
-  step1Data: FormState['step1']
-): Promise<boolean> {
+  participantOrder: number,
+  step3Data: Record<string, unknown>
+): Promise<{ success: boolean; error?: string }> {
   try {
-    // Check if email already exists in another application
-    const emailCheck = await checkEmailExists(step1Data.email, applicationId);
-    if (emailCheck.exists) {
-      console.error(`🚫 Cannot save Step 1 data: Email ${step1Data.email} already exists in application ${emailCheck.applicationId}`);
-      throw new Error(`This email address is already associated with another application. Please use a different email or contact support if you believe this is an error.`);
-    }
+    console.log(`📝 Saving Step 3 data for participant ${participantOrder} in application:`, applicationId);
 
-    // First check if primary applicant exists
-    const { data: existingApplicant } = await supabase
-      .from('applicants')
-      .select('id')
+    // Get the participant
+    const { data: participant, error: participantError } = await supabase
+      .from('application_participants')
+      .select('id, person_id')
       .eq('application_id', applicationId)
-      .eq('applicant_order', 1)
+      .eq('participant_order', participantOrder)
       .single();
 
-    const applicantData = {
-      application_id: applicationId,
-      applicant_order: 1,
-      first_name: step1Data.first_name,
-      last_name: step1Data.last_name,
-      date_of_birth: step1Data.date_of_birth?.toISOString().split('T')[0],
-      mobile: step1Data.mobile,
-      email: step1Data.email,
-    };
-
-    if (existingApplicant) {
-      // Update existing primary applicant
-      const { error } = await supabase
-        .from('applicants')
-        .update(applicantData)
-        .eq('id', existingApplicant.id);
-
-      if (error) {
-        console.error('Error updating Step 1 data:', error);
-        return false;
-      }
-    } else {
-      // Create new primary applicant
-      const { error } = await supabase
-        .from('applicants')
-        .insert(applicantData);
-
-      if (error) {
-        console.error('Error inserting Step 1 data:', error);
-        return false;
-      }
-    }
-
-    // Update application progress
-    await updateApplication(applicationId, {
-      current_step: Math.max(2, 1), // Ensure we don't go backwards
-      progress_percentage: Math.max(20, 0),
-    });
-
-    return true;
-  } catch (error) {
-    console.error('Error in saveStep1Data:', error);
-    return false;
-  }
-}
-
-/**
- * Save Step 2 data (Personal Info) - Updates primary applicant + manages co-applicants
- */
-export async function saveStep2Data(
-  applicationId: string,
-  step2Data: FormState['step2']
-): Promise<boolean> {
-  try {
-    // Update primary applicant with additional info
-    const { data: primaryApplicant } = await supabase
-      .from('applicants')
-      .select('id')
-      .eq('application_id', applicationId)
-      .eq('applicant_order', 1)
-      .single();
-
-    if (primaryApplicant) {
-      await supabase
-        .from('applicants')
-        .update({
-          nationality: step2Data.nationality,
-          marital_status: step2Data.marital_status,
-          telephone: step2Data.telephone,
-        })
-        .eq('id', primaryApplicant.id);
-    }
-
-    // Handle co-applicants
-    if (step2Data.has_co_applicants && step2Data.co_applicants.length > 0) {
-      // Check for duplicate emails across all co-applicants
-      const coApplicantEmails = step2Data.co_applicants.map(coApp => coApp.email);
-      const emailCheck = await checkMultipleEmailsExist(coApplicantEmails, applicationId);
-      
-      if (emailCheck.hasConflicts) {
-        const duplicateEmails = emailCheck.duplicates.map(d => d.email).join(', ');
-        console.error(`🚫 Cannot save Step 2 data: Co-applicant emails already exist: ${duplicateEmails}`);
-        throw new Error(`One or more co-applicant email addresses are already associated with other applications: ${duplicateEmails}. Please use different email addresses.`);
-      }
-      
-      // Delete existing co-applicants first
-      await supabase
-        .from('applicants')
-        .delete()
-        .eq('application_id', applicationId)
-        .gt('applicant_order', 1);
-
-      // Insert new co-applicants
-      const coApplicantData = step2Data.co_applicants.map((coApp, index) => ({
-        application_id: applicationId,
-        applicant_order: index + 2, // Start from 2 (primary is 1)
-        first_name: coApp.first_name,
-        last_name: coApp.last_name,
-        date_of_birth: coApp.date_of_birth?.toISOString().split('T')[0],
-        mobile: coApp.mobile,
-        email: coApp.email,
-        nationality: coApp.nationality,
-        marital_status: coApp.marital_status,
-      }));
-
-      const { error } = await supabase
-        .from('applicants')
-        .insert(coApplicantData);
-
-      if (error) {
-        console.error('Error inserting co-applicants:', error);
-        return false;
-      }
-    } else {
-      // Remove co-applicants if has_co_applicants is false
-      await supabase
-        .from('applicants')
-        .delete()
-        .eq('application_id', applicationId)
-        .gt('applicant_order', 1);
-    }
-
-    // Update application progress
-    await updateApplication(applicationId, {
-      current_step: Math.max(3, 2),
-      progress_percentage: Math.max(40, 20),
-    });
-
-    return true;
-  } catch (error) {
-    console.error('Error in saveStep2Data:', error);
-    return false;
-  }
-}
-
-/**
- * Save Step 3 data (Property Info) - Updates specific applicant's property details
- */
-export async function saveStep3Data(
-  applicationId: string,
-  applicantOrder: number,
-  step3Data: Record<string, unknown> // Property data for specific applicant
-): Promise<boolean> {
-  try {
-    // Get the applicant ID
-    const { data: applicant } = await supabase
-      .from('applicants')
-      .select('id')
-      .eq('application_id', applicationId)
-      .eq('applicant_order', applicantOrder)
-      .single();
-
-    if (!applicant) {
-      console.error(`Applicant with order ${applicantOrder} not found`);
-      return false;
+    if (participantError || !participant) {
+      console.error('Error finding participant:', participantError);
+      return { success: false, error: `Participant with order ${participantOrder} not found` };
     }
 
     // Calculate time at address in months for storage
@@ -418,9 +1155,9 @@ export async function saveStep3Data(
       timeAtCurrentMonths = diffMonths % 12;
     }
 
-    // Update applicant with property information
-    const { error: applicantError } = await supabase
-      .from('applicants')
+    // Update participant with property information
+    const { error: updateError } = await supabase
+      .from('application_participants')
       .update({
         current_address: step3Data.current_address,
         time_at_current_address_years: timeAtCurrentYears,
@@ -433,21 +1170,21 @@ export async function saveStep3Data(
         mortgage_outstanding: step3Data.mortgage_outstanding,
         lender_or_landlord_details: step3Data.lender_or_landlord_details,
       })
-      .eq('id', applicant.id);
+      .eq('id', participant.id);
 
-    if (applicantError) {
-      console.error('Error updating applicant property data:', applicantError);
-      return false;
+    if (updateError) {
+      console.error('Error updating participant property data:', updateError);
+      return { success: false, error: 'Failed to update participant property data' };
     }
 
-    // Handle children
+    // Handle children (stored in person_children table linked to person_id)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if (step3Data.has_children && (step3Data.children as any[])?.length > 0) {
-      // Delete existing children for this applicant
+      // Delete existing children for this person
       await supabase
-        .from('applicant_children')
+        .from('person_children')
         .delete()
-        .eq('applicant_id', applicant.id);
+        .eq('person_id', participant.person_id);
 
       // Insert new children
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -456,84 +1193,72 @@ export async function saveStep3Data(
         const age = now.getFullYear() - birthDate.getFullYear();
         
         return {
-          applicant_id: applicant.id,
+          person_id: participant.person_id,
           age: age,
+          date_of_birth: birthDate.toISOString().split('T')[0],
         };
       });
 
       const { error: childrenError } = await supabase
-        .from('applicant_children')
+        .from('person_children')
         .insert(childrenData);
 
       if (childrenError) {
         console.error('Error inserting children data:', childrenError);
-        return false;
+        return { success: false, error: 'Failed to save children data' };
       }
     } else {
       // Remove children if has_children is false
       await supabase
-        .from('applicant_children')
+        .from('person_children')
         .delete()
-        .eq('applicant_id', applicant.id);
+        .eq('person_id', participant.person_id);
     }
 
-    // Check if this was the last applicant to complete Step 3
-    const { data: allApplicants } = await supabase
-      .from('applicants')
-      .select('id, applicant_order, current_address')
-      .eq('application_id', applicationId)
-      .order('applicant_order');
+    console.log(`✅ Step 3 saved successfully for participant ${participantOrder}`);
+    return { success: true };
 
-    const allCompleted = allApplicants?.every(app => app.current_address) || false;
-
-    if (allCompleted) {
-      // Update application progress only when all applicants have completed Step 3
-      await updateApplication(applicationId, {
-        current_step: Math.max(4, 3),
-        progress_percentage: Math.max(60, 40),
-      });
-    }
-
-    return true;
   } catch (error) {
-    console.error('Error in saveStep3Data:', error);
-    return false;
+    console.error('Error in saveStep3DataForParticipant:', error);
+    return { success: false, error: 'Internal server error' };
   }
 }
 
 /**
- * Save Step 4 data (Employment) - Updates employment and financial data for specific applicant
+ * Save Step 4 data for a specific participant (for backward compatibility with applicant routes)
  */
-export async function saveStep4Data(
+export async function saveStep4DataForParticipant(
   applicationId: string,
-  applicantOrder: number,
-  step4Data: Record<string, unknown> // Employment data for specific applicant
-): Promise<boolean> {
+  participantOrder: number,
+  step4Data: Record<string, unknown>
+): Promise<{ success: boolean; error?: string }> {
   try {
-    // Get the applicant ID
-    const { data: applicant } = await supabase
-      .from('applicants')
+    console.log(`📝 Saving Step 4 data for participant ${participantOrder} in application:`, applicationId);
+
+    // Get the participant
+    const { data: participant, error: participantError } = await supabase
+      .from('application_participants')
       .select('id')
       .eq('application_id', applicationId)
-      .eq('applicant_order', applicantOrder)
+      .eq('participant_order', participantOrder)
       .single();
 
-    if (!applicant) {
-      console.error(`Applicant with order ${applicantOrder} not found`);
-      return false;
+    if (participantError || !participant) {
+      console.error('Error finding participant:', participantError);
+      return { success: false, error: `Participant with order ${participantOrder} not found` };
     }
 
-    // Update applicant employment status
+    // Update participant employment status
     await supabase
-      .from('applicants')
+      .from('application_participants')
       .update({
         employment_status: step4Data.employment_status,
       })
-      .eq('id', applicant.id);
+      .eq('id', participant.id);
 
     // Handle employment details (upsert)
     const employmentDetails = {
-      applicant_id: applicant.id,
+      participant_id: participant.id,
       // Employed fields
       job_title: step4Data.job_title,
       employer_name: step4Data.employer_name,
@@ -559,7 +1284,7 @@ export async function saveStep4Data(
     const { data: existingEmployment } = await supabase
       .from('employment_details')
       .select('id')
-      .eq('applicant_id', applicant.id)
+      .eq('participant_id', participant.id)
       .single();
 
     if (existingEmployment) {
@@ -577,7 +1302,7 @@ export async function saveStep4Data(
 
     // Handle financial commitments (upsert)
     const financialCommitments = {
-      applicant_id: applicant.id,
+      participant_id: participant.id,
       personal_loans: step4Data.personal_loans || 0,
       credit_card_debt: step4Data.credit_card_debt || 0,
       car_loans_lease: step4Data.car_loans_lease || 0,
@@ -589,7 +1314,7 @@ export async function saveStep4Data(
     const { data: existingCommitments } = await supabase
       .from('financial_commitments')
       .select('id')
-      .eq('applicant_id', applicant.id)
+      .eq('participant_id', participant.id)
       .single();
 
     if (existingCommitments) {
@@ -605,501 +1330,11 @@ export async function saveStep4Data(
         .insert(financialCommitments);
     }
 
-    // Check if this was the last applicant to complete Step 4
-    const { data: allApplicants } = await supabase
-      .from('applicants')
-      .select('id, applicant_order, employment_status')
-      .eq('application_id', applicationId)
-      .order('applicant_order');
-
-    const allCompleted = allApplicants?.every(app => app.employment_status) || false;
-
-    if (allCompleted) {
-      // Update application progress only when all applicants have completed Step 4
-      await updateApplication(applicationId, {
-        current_step: Math.max(5, 4),
-        progress_percentage: Math.max(80, 60),
-      });
-    }
-
-    return true;
-  } catch (error) {
-    console.error('Error in saveStep4Data:', error);
-    return false;
-  }
-}
-
-/**
- * Save Step 5 data (Portfolio) - Application-wide rental properties and assets
- */
-export async function saveStep5Data(
-  applicationId: string,
-  step5Data: FormState['step5']
-): Promise<boolean> {
-  try {
-    // Handle rental properties
-    if (step5Data.has_rental_properties && step5Data.rental_properties.length > 0) {
-      // Delete existing rental properties for this application
-      await supabase
-        .from('rental_properties')
-        .delete()
-        .eq('application_id', applicationId);
-
-      // Insert new rental properties
-      const rentalData = step5Data.rental_properties.map(property => ({
-        application_id: applicationId,
-        property_address: property.property_address,
-        current_valuation: property.current_valuation,
-        mortgage_outstanding: property.mortgage_outstanding,
-        monthly_mortgage_payment: property.monthly_mortgage_payment,
-        monthly_rent_received: property.monthly_rent_received,
-      }));
-
-      const { error } = await supabase
-        .from('rental_properties')
-        .insert(rentalData);
-
-      if (error) {
-        console.error('Error inserting rental properties:', error);
-        return false;
-      }
-    } else {
-      // Remove all rental properties if has_rental_properties is false
-      await supabase
-        .from('rental_properties')
-        .delete()
-        .eq('application_id', applicationId);
-    }
-
-    // Handle other assets
-    if (step5Data.other_assets?.trim()) {
-      // Check if additional assets record exists
-      const { data: existingAssets } = await supabase
-        .from('additional_assets')
-        .select('id')
-        .eq('application_id', applicationId)
-        .single();
-
-      const assetData = {
-        application_id: applicationId,
-        asset_description: step5Data.other_assets,
-      };
-
-      if (existingAssets) {
-        await supabase
-          .from('additional_assets')
-          .update(assetData)
-          .eq('id', existingAssets.id);
-      } else {
-        await supabase
-          .from('additional_assets')
-          .insert(assetData);
-      }
-    } else {
-      // Remove assets if empty
-      await supabase
-        .from('additional_assets')
-        .delete()
-        .eq('application_id', applicationId);
-    }
-
-    // Update application progress
-    await updateApplication(applicationId, {
-      current_step: Math.max(6, 5),
-      progress_percentage: Math.max(90, 80),
-    });
-
-    return true;
-  } catch (error) {
-    console.error('Error in saveStep5Data:', error);
-    return false;
-  }
-}
-
-/**
- * Save Step 6 data (Spanish Property) - Final step and submission
- */
-export async function saveStep6Data(
-  applicationId: string,
-  step6Data: FormState['step6']
-): Promise<boolean> {
-  try {
-    // Update application with final data and mark as submitted
-    const updates = {
-      urgency_level: step6Data.urgency_level,
-      purchase_price: step6Data.purchase_price,
-      deposit_available: step6Data.deposit_available,
-      property_address: step6Data.property_address,
-      home_status: step6Data.home_status,
-      property_type: step6Data.property_type,
-      real_estate_agent_contact: step6Data.real_estate_agent_contact,
-      lawyer_contact: step6Data.lawyer_contact,
-      additional_notes: step6Data.additional_information,
-      current_step: 6,
-      progress_percentage: 100,
-      status: step6Data.authorization_consent ? 'submitted' : 'draft',
-      submitted_at: step6Data.authorization_consent ? new Date().toISOString() : undefined,
-    };
-
-    const success = await updateApplication(applicationId, updates);
-
-    if (success && step6Data.authorization_consent) {
-      // Save form progress to mark completion
-      await saveFormProgress(applicationId, 6, { completed: true });
-    }
-
-    return success;
-  } catch (error) {
-    console.error('Error in saveStep6Data:', error);
-    return false;
-  }
-}
-
-/**
- * Save form progress for resume functionality
- */
-export async function saveFormProgress(
-  applicationId: string,
-  currentStep: number,
-  stepData: Record<string, unknown>
-): Promise<boolean> {
-  try {
-    const progressData = {
-      application_id: applicationId,
-      last_completed_step: currentStep,
-      step_data: stepData,
-    };
-
-    // Check if progress record exists
-    const { data: existingProgress } = await supabase
-      .from('form_progress')
-      .select('id')
-      .eq('application_id', applicationId)
-      .single();
-
-    if (existingProgress) {
-      const { error } = await supabase
-        .from('form_progress')
-        .update(progressData)
-        .eq('id', existingProgress.id);
-
-      if (error) {
-        console.error('Error updating form progress:', error);
-        return false;
-      }
-    } else {
-      const { error } = await supabase
-        .from('form_progress')
-        .insert(progressData);
-
-      if (error) {
-        console.error('Error inserting form progress:', error);
-        return false;
-      }
-    }
-
-    return true;
-  } catch (error) {
-    console.error('Error in saveFormProgress:', error);
-    return false;
-  }
-}
-
-/**
- * Load complete application data from database
- */
-export async function loadApplicationData(applicationId: string): Promise<DatabaseApplication | null> {
-  try {
-    const { data, error } = await supabase
-      .from('applications')
-      .select(`
-        *,
-        applicants (
-          *,
-          applicant_children (*),
-          employment_details (*),
-          financial_commitments (*)
-        ),
-        rental_properties (*),
-        additional_assets (*),
-        form_progress (*)
-      `)
-      .eq('id', applicationId)
-      .single();
-
-    if (error) {
-      console.error('Error loading application data:', error);
-      return null;
-    }
-
-    return data;
-  } catch (error) {
-    console.error('Error in loadApplicationData:', error);
-    return null;
-  }
-}
-
-/**
- * Get all applications for admin/dashboard (if needed)
- */
-export async function getApplications(
-  limit: number = 50,
-  offset: number = 0
-): Promise<DatabaseApplication[] | null> {
-  try {
-    const { data, error } = await supabase
-      .from('applications')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
-
-    if (error) {
-      console.error('Error fetching applications:', error);
-      return null;
-    }
-
-    return data;
-  } catch (error) {
-    console.error('Error in getApplications:', error);
-    return null;
-  }
-}
-
-/**
- * Delete application and all related data
- */
-export async function deleteApplication(applicationId: string): Promise<boolean> {
-  try {
-    // Due to CASCADE DELETE constraints, deleting the application will remove all related data
-    const { error } = await supabase
-      .from('applications')
-      .delete()
-      .eq('id', applicationId);
-
-    if (error) {
-      console.error('Error deleting application:', error);
-      return false;
-    }
-
-    return true;
-  } catch (error) {
-    console.error('Error in deleteApplication:', error);
-    return false;
-  }
-}
-
-/**
- * Update Step 3 data for the entire application
- */
-export async function updateApplicationStep3(
-  applicationId: string,
-  step3Data: FormState['step3']
-): Promise<{ success: boolean; error?: string }> {
-  try {
-    // Save Step 3 data for primary applicant (order 1)
-    const primarySuccess = await saveStep3Data(applicationId, 1, step3Data);
-    
-    if (!primarySuccess) {
-      return { success: false, error: 'Failed to save primary applicant Step 3 data' };
-    }
-
-    // Save Step 3 data for co-applicants if they exist
-    if (step3Data.co_applicants && step3Data.co_applicants.length > 0) {
-      for (let i = 0; i < step3Data.co_applicants.length; i++) {
-        const coApplicantData = step3Data.co_applicants[i];
-        const success = await saveStep3Data(applicationId, i + 2, coApplicantData); // Order starts at 2
-        
-        if (!success) {
-          return { success: false, error: `Failed to save co-applicant ${i + 1} Step 3 data` };
-        }
-      }
-    }
-
+    console.log(`✅ Step 4 saved successfully for participant ${participantOrder}`);
     return { success: true };
+
   } catch (error) {
-    console.error('Error in updateApplicationStep3:', error);
+    console.error('Error in saveStep4DataForParticipant:', error);
     return { success: false, error: 'Internal server error' };
-  }
-}
-
-/**
- * Update Step 4 data for the entire application
- */
-export async function updateApplicationStep4(
-  applicationId: string,
-  step4Data: FormState['step4']
-): Promise<{ success: boolean; error?: string }> {
-  try {
-    // Save Step 4 data for primary applicant (order 1)
-    const primarySuccess = await saveStep4Data(applicationId, 1, {
-      employment_status: step4Data.employment_status,
-      ...step4Data.employment_details,
-      ...step4Data.financial_commitments,
-    });
-    
-    if (!primarySuccess) {
-      return { success: false, error: 'Failed to save primary applicant Step 4 data' };
-    }
-
-    // Save Step 4 data for co-applicants if they exist
-    if (step4Data.co_applicants && step4Data.co_applicants.length > 0) {
-      for (let i = 0; i < step4Data.co_applicants.length; i++) {
-        const coApplicantData = step4Data.co_applicants[i];
-        const success = await saveStep4Data(applicationId, i + 2, { // Order starts at 2
-          employment_status: coApplicantData.employment_status,
-          ...coApplicantData.employment_details,
-          ...coApplicantData.financial_commitments,
-        });
-        
-        if (!success) {
-          return { success: false, error: `Failed to save co-applicant ${i + 1} Step 4 data` };
-        }
-      }
-    }
-
-    return { success: true };
-  } catch (error) {
-    console.error('Error in updateApplicationStep4:', error);
-    return { success: false, error: 'Internal server error' };
-  }
-}
-
-/**
- * Update Step 5 data for the entire application
- */
-export async function updateApplicationStep5(
-  applicationId: string,
-  step5Data: FormState['step5']
-): Promise<{ success: boolean; error?: string }> {
-  try {
-    const success = await saveStep5Data(applicationId, step5Data);
-    
-    if (!success) {
-      return { success: false, error: 'Failed to save Step 5 data' };
-    }
-
-    return { success: true };
-  } catch (error) {
-    console.error('Error in updateApplicationStep5:', error);
-    return { success: false, error: 'Internal server error' };
-  }
-}
-
-/**
- * Update Step 6 data for the entire application
- */
-export async function updateApplicationStep6(
-  applicationId: string,
-  step6Data: FormState['step6']
-): Promise<{ success: boolean; error?: string }> {
-  try {
-    const success = await saveStep6Data(applicationId, step6Data);
-    
-    if (!success) {
-      return { success: false, error: 'Failed to save Step 6 data' };
-    }
-
-    return { success: true };
-  } catch (error) {
-    console.error('Error in updateApplicationStep6:', error);
-    return { success: false, error: 'Internal server error' };
-  }
-}
-
-/**
- * Transform Supabase application data back to FormState format
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function transformDatabaseToFormState(dbData: any): FormState | null {
-  try {
-    if (!dbData || !dbData.applicants) {
-      return null;
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const primaryApplicant = dbData.applicants.find((app: any) => app.applicant_order === 1);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const coApplicants = dbData.applicants.filter((app: any) => app.applicant_order > 1);
-
-    const formState: FormState = {
-      step1: {
-        first_name: primaryApplicant?.first_name || '',
-        last_name: primaryApplicant?.last_name || '',
-        date_of_birth: primaryApplicant?.date_of_birth ? new Date(primaryApplicant.date_of_birth) : null,
-        email: primaryApplicant?.email || '',
-        mobile: primaryApplicant?.mobile || '',
-      },
-      step2: {
-        nationality: primaryApplicant?.nationality || '',
-        marital_status: primaryApplicant?.marital_status || '',
-        telephone: primaryApplicant?.telephone || '',
-        has_co_applicants: coApplicants.length > 0,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        co_applicants: coApplicants.map((coApp: any) => ({
-          first_name: coApp.first_name,
-          last_name: coApp.last_name,
-          date_of_birth: new Date(coApp.date_of_birth),
-          email: coApp.email,
-          mobile: coApp.mobile,
-          nationality: coApp.nationality,
-          marital_status: coApp.marital_status,
-          applicant_order: coApp.applicant_order,
-        })),
-      },
-      step3: {
-        current_address: primaryApplicant?.current_address || '',
-        move_in_date: null, // Calculate from time_at_current_address if needed
-        homeowner_or_tenant: primaryApplicant?.homeowner_or_tenant || '',
-        monthly_mortgage_or_rent: primaryApplicant?.monthly_mortgage_or_rent || 0,
-        monthly_payment_currency: 'EUR', // Default
-        current_property_value: primaryApplicant?.current_property_value || 0,
-        property_value_currency: 'EUR', // Default
-        mortgage_outstanding: primaryApplicant?.mortgage_outstanding || 0,
-        mortgage_outstanding_currency: 'EUR', // Default
-        lender_or_landlord_details: primaryApplicant?.lender_or_landlord_details || '',
-        previous_address: primaryApplicant?.previous_address || '',
-        previous_move_in_date: null,
-        previous_move_out_date: null,
-        tax_country: primaryApplicant?.tax_country || '',
-        has_children: (primaryApplicant?.applicant_children?.length || 0) > 0,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
-        children: primaryApplicant?.applicant_children?.map((child: any) => ({
-          date_of_birth: new Date(), // Calculate from age
-        })) || [],
-        co_applicants: [], // Would need to populate this for each co-applicant
-      },
-      step4: {
-        employment_status: primaryApplicant?.employment_status || '',
-        employment_details: primaryApplicant?.employment_details?.[0] || {},
-        financial_commitments: primaryApplicant?.financial_commitments?.[0] || {},
-        co_applicants: [], // Would need to populate this for each co-applicant
-      },
-      step5: {
-        has_rental_properties: (dbData.rental_properties?.length || 0) > 0,
-        rental_properties: dbData.rental_properties || [],
-        other_assets: dbData.additional_assets?.[0]?.asset_description || '',
-      },
-      step6: {
-        urgency_level: dbData.urgency_level || '',
-        purchase_price: dbData.purchase_price || 0,
-        deposit_available: dbData.deposit_available || 0,
-        property_address: dbData.property_address || '',
-        home_status: dbData.home_status || '',
-        property_type: dbData.property_type || '',
-        real_estate_agent_contact: dbData.real_estate_agent_contact || '',
-        lawyer_contact: dbData.lawyer_contact || '',
-        additional_information: dbData.additional_notes || '',
-        authorization_consent: dbData.status === 'submitted',
-      },
-      currentStep: dbData.current_step || 1,
-      applicationId: dbData.id,
-      ghlContactId: dbData.ghl_contact_id,
-      ghlOpportunityId: null, // Not implemented yet
-    };
-
-    return formState;
-  } catch (error) {
-    console.error('Error transforming database data to form state:', error);
-    return null;
   }
 }

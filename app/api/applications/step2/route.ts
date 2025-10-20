@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { saveStep2DataNew } from '@/lib/services/supabase-service-new';
+import { saveStep2DataNew } from '@/lib/services/supabase-service';
 import type { FormState } from '@/lib/types/application';
 
 // Save Step 2 data using new normalized schema

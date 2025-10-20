@@ -1,6 +1,6 @@
 'use client';
 
-import { useForm, FieldErrors } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useFormStore } from '@/lib/store/form-store';
 import { step2Schema, Step2FormData } from '@/lib/validations/form-schemas';
@@ -133,7 +133,7 @@ export function Step2AboutYou({ onNext }: Step2Props) {
   }, [step2.co_applicants, step2.has_co_applicants, form]);
 
   const onSubmit = async (data: Step2FormData) => {
-    console.log('Step 2 Form Data:', data);
+
     setIsSubmitting(true);
     
     try {
@@ -146,7 +146,7 @@ export function Step2AboutYou({ onNext }: Step2Props) {
         })) || [],
       };
       
-      console.log('Step 2 Transformed Data:', transformedData);
+
       
       // Update with database sync
       await updateStep2(transformedData);
@@ -161,10 +161,8 @@ export function Step2AboutYou({ onNext }: Step2Props) {
     }
   };
 
-  const onError = (errors: FieldErrors<Step2FormData>) => {
-    console.log('Step 2 Validation Errors:', errors);
-    console.log('Current form values:', form.getValues());
-    console.log('Current step2 store data:', step2);
+  const onError = () => {
+
     
     // Show toast notification
     toast.error('Please fill in all required fields correctly', {
@@ -364,7 +362,7 @@ export function Step2AboutYou({ onNext }: Step2Props) {
         <FormNavigation 
           onNext={() => form.handleSubmit(onSubmit, onError)()} 
           isSubmitting={isSubmitting} 
-          showSaveForLater={true}
+
         />
       </form>
     </Form>

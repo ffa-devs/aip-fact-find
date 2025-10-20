@@ -125,12 +125,6 @@ export function Step5Portfolio({ onNext }: Step5Props) {
     <Form {...form}>
       <form className="space-y-6">
         <div className="space-y-4">
-          <div>
-            <h2 className="text-2xl font-bold">Property Portfolio & Assets</h2>
-            <p className="text-muted-foreground mt-1">
-              Tell us about your current property portfolio and other assets
-            </p>
-          </div>
 
           {/* Rental Properties Section */}
           <Card>

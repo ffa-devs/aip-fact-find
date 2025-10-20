@@ -87,9 +87,7 @@ export function Step1LeadCapture({ onNext }: Step1Props) {
     setIsSubmitting(true);
     clearError(); // Clear any previous errors
     
-    console.log('Step 1 onSubmit data:', data);
-    console.log('date_of_birth type:', typeof data.date_of_birth);
-    console.log('date_of_birth value:', data.date_of_birth);
+
     
     try {
       // Create application if it doesn't exist
@@ -144,11 +142,6 @@ export function Step1LeadCapture({ onNext }: Step1Props) {
               if (updateResult.error) {
                 console.error('Failed to update application with GHL ID:', updateResult.error);
                 // Don't block the flow, just log the error
-              } else {
-                console.log('✅ Application updated with GHL IDs:', {
-                  contactId: result.contactId,
-                  opportunityId: result.opportunityId
-                });
               }
             } catch (error) {
               console.error('Error updating application with GHL ID:', error);
@@ -376,7 +369,7 @@ export function Step1LeadCapture({ onNext }: Step1Props) {
           onNext={() => form.handleSubmit(onSubmit, onError)()} 
           isSubmitting={isSubmitting} 
           showBack={false}
-          showSaveForLater={false}
+
         />
       </form>
     </Form>

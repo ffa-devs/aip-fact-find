@@ -120,13 +120,6 @@ export function Step6SpanishProperty({ onNext }: Step6Props) {
     <Form {...form}>
       <form className="space-y-6">
         <div className="space-y-4">
-          <div>
-            <h2 className="text-2xl font-bold">Spanish Property Information</h2>
-            <p className="text-muted-foreground mt-1">
-              Provide details about the Spanish property you wish to purchase or refinance
-            </p>
-          </div>
-
           {/* Level of Urgency */}
           <Card>
             <CardHeader>

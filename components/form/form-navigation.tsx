@@ -3,19 +3,16 @@
 import { Button } from '@/components/ui/button';
 import { useFormStore } from '@/lib/store/form-store';
 import { Loader2, ArrowLeft } from 'lucide-react';
-import { toast } from 'sonner';
 
 interface FormNavigationProps {
-  onNext?: () => void;
+  onNext: () => void;
   isSubmitting?: boolean;
-  showSaveForLater?: boolean;
   showBack?: boolean;
 }
 
 export function FormNavigation({
   onNext,
   isSubmitting = false,
-  showSaveForLater = true,
   showBack = true,
 }: FormNavigationProps) {
   const { currentStep, previousStep } = useFormStore();
@@ -33,16 +30,6 @@ export function FormNavigation({
   // 4. Create resume route (/resume/[token]) to load saved state
   // 5. Add GHL integration: tag as "AIP-Application-Incomplete-StepX"
   // 6. Trigger follow-up automation (24h, 72h, 7d reminders)
-  const handleSaveForLater = () => {
-    // TEMP: Currently just shows message and redirects - not actually saving properly
-    toast.info('Save for Later feature coming soon!', {
-      description: 'Your progress is auto-saved in this browser session',
-    });
-    // Don't redirect for now since it's misleading
-    // setTimeout(() => {
-    //   window.location.href = '/';
-    // }, 1000);
-  };
 
   return (
     <div className="flex justify-between items-center pt-6 mt-8 border-t border-gray-200">

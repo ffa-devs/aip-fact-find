@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { saveStep3Data } from '@/lib/services/supabase-service';
+import { saveStep3DataForParticipant } from '@/lib/services/supabase-service';
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,13 +14,13 @@ export async function POST(request: NextRequest) {
 
     console.log(`📝 Saving Step 3 data for applicant ${applicantIndex + 1} in application:`, applicationId);
 
-    // applicantIndex is 0-based, but applicant_order is 1-based (1 = primary, 2+ = co-applicants)
-    const applicantOrder = applicantIndex + 1;
-    const result = await saveStep3Data(applicationId, applicantOrder, step3Data);
+    // applicantIndex is 0-based, but participant_order is 1-based (1 = primary, 2+ = co-applicants)
+    const participantOrder = applicantIndex + 1;
+    const result = await saveStep3DataForParticipant(applicationId, participantOrder, step3Data);
 
-    if (!result) {
+    if (!result.success) {
       return NextResponse.json(
-        { error: 'Failed to save applicant Step 3 data' },
+        { error: result.error || 'Failed to save applicant Step 3 data' },
         { status: 500 }
       );
     }

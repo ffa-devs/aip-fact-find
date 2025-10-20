@@ -13,8 +13,7 @@ import {
   saveApplicantStep4Data,
   loadApplicationData,
 } from '@/lib/services/api-service';
-import { transformDatabaseToFormState } from '@/lib/services/supabase-service';
-import { completeApplicationInGHL } from '@/lib/ghl/service';
+import { transformDatabaseToFormStateNew } from '@/lib/utils/form-transforms';
 
 const initialState: FormState = {
   step1: {
@@ -233,17 +232,27 @@ export const useFormStore = create<FormState & FormActions>()(
               if (state.ghlContactId && state.ghlOpportunityId) {
                 const step6Data = { ...state.step6, ...data };
                 
-                await completeApplicationInGHL(
-                  state.ghlContactId,
-                  state.ghlOpportunityId,
-                  {
-                    purchase_price: step6Data.purchase_price || 0,
-                    deposit_available: step6Data.deposit_available || 0,
-                    property_type: step6Data.property_type || '',
-                    home_status: step6Data.home_status || '',
-                    urgency_level: step6Data.urgency_level || '',
-                  }
-                );
+                const response = await fetch('/api/ghl/complete-application', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    contactId: state.ghlContactId,
+                    opportunityId: state.ghlOpportunityId,
+                    completionData: {
+                      purchase_price: step6Data.purchase_price || 0,
+                      deposit_available: step6Data.deposit_available || 0,
+                      property_type: step6Data.property_type || '',
+                      home_status: step6Data.home_status || '',
+                      urgency_level: step6Data.urgency_level || '',
+                    }
+                  }),
+                });
+
+                if (!response.ok) {
+                  throw new Error('Failed to complete application in GHL');
+                }
                 
                 console.log('✅ GHL opportunity updated successfully');
               } else {
@@ -342,7 +351,7 @@ export const useFormStore = create<FormState & FormActions>()(
         try {
           const result = await loadApplicationData(applicationId);
           if (result.data) {
-            const formState = transformDatabaseToFormState(result.data);
+            const formState = transformDatabaseToFormStateNew(result.data);
             if (formState) {
               // Update all form state from database
               set({

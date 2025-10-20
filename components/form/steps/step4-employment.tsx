@@ -168,12 +168,6 @@ export function Step4Employment({
     <Form {...form}>
       <form className="space-y-6">
         <div className="space-y-4">
-          <div>
-            <h2 className="text-2xl font-bold">Employment & Income</h2>
-            <p className="text-muted-foreground mt-1">
-              Tell us about your employment and financial situation
-            </p>
-          </div>
 
           {/* Employment Status */}
           <Card>

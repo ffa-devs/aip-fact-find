@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { saveStep1DataNew } from '@/lib/services/supabase-service-new';
+import { saveStep1DataNew } from '@/lib/services/supabase-service';
 import type { FormState } from '@/lib/types/application';
 
 // Save Step 1 data (creates applicant if doesn't exist)
