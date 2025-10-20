@@ -39,7 +39,6 @@ export function Step1LeadCapture({ onNext }: Step1Props) {
     ghlContactId,
     applicationId,
     createNewApplication,
-    lastError,
     clearError
   } = useFormStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -87,8 +86,6 @@ export function Step1LeadCapture({ onNext }: Step1Props) {
     setIsSubmitting(true);
     clearError(); // Clear any previous errors
     
-
-    
     try {
       // Create application if it doesn't exist
       let currentApplicationId = applicationId;
@@ -102,9 +99,10 @@ export function Step1LeadCapture({ onNext }: Step1Props) {
       // Update Step 1 data (this will auto-sync to database)
       await updateStep1(data);
 
-      // Check for database sync errors
-      if (lastError) {
-        console.error('Database sync error:', lastError);
+      // Check for database sync errors after the update completes
+      const currentState = useFormStore.getState();
+      if (currentState.lastError) {
+        console.error('Database sync error:', currentState.lastError);
         // Continue with GHL integration but show warning
         toast.error('Database sync warning', {
           description: 'Data saved locally but may not be synced to server',
@@ -204,19 +202,22 @@ export function Step1LeadCapture({ onNext }: Step1Props) {
   };
 
   const onError = () => {
-    // Show toast notification
-    toast.error('Please fill in all required fields correctly', {
-      description: 'Check the highlighted fields below',
-    });
+    // Only show error toast if we're not currently submitting
+    if (!isSubmitting) {
+      // Show toast notification
+      toast.error('Please fill in all required fields correctly', {
+        description: 'Check the highlighted fields below',
+      });
 
-    // Scroll to first error when validation fails
-    setTimeout(() => {
-      const firstError = document.querySelector('[aria-invalid="true"]');
-      if (firstError) {
-        firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        (firstError as HTMLElement).focus();
-      }
-    }, 100);
+      // Scroll to first error when validation fails
+      setTimeout(() => {
+        const firstError = document.querySelector('[aria-invalid="true"]');
+        if (firstError) {
+          firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          (firstError as HTMLElement).focus();
+        }
+      }, 100);
+    }
   };
 
   const calculateAge = (date: Date | string | null | undefined) => {
@@ -366,7 +367,7 @@ export function Step1LeadCapture({ onNext }: Step1Props) {
         </div>
 
         <FormNavigation 
-          onNext={() => form.handleSubmit(onSubmit, onError)()} 
+          onNext={form.handleSubmit(onSubmit, onError)} 
           isSubmitting={isSubmitting} 
           showBack={false}
 
