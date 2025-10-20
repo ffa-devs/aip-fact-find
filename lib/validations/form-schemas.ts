@@ -67,11 +67,11 @@ export const step3Schema = z.object({
     message: 'Please select homeowner or tenant',
   }),
   monthly_mortgage_or_rent: z.number().min(0, 'Amount must be positive'),
-  monthly_payment_currency: z.string().min(1, 'Currency is required'),
+  monthly_payment_currency: z.string().default('USD'),
   current_property_value: z.number().optional(),
-  property_value_currency: z.string().optional(),
+  property_value_currency: z.string().default('USD'),
   mortgage_outstanding: z.number().optional(),
-  mortgage_outstanding_currency: z.string().optional(),
+  mortgage_outstanding_currency: z.string().default('USD'),
   lender_or_landlord_details: z.string().optional(),
   previous_address: z.string().optional(),
   previous_move_in_date: z.date().optional(),
@@ -92,6 +92,15 @@ export const step3Schema = z.object({
 }, {
   message: "Please add at least one child",
   path: ["children"], // This will highlight the children field
+}).refine((data) => {
+  // If has_children is true, all children must have valid dates
+  if (data.has_children && data.children) {
+    return data.children.every(child => child.date_of_birth && child.date_of_birth instanceof Date && !isNaN(child.date_of_birth.getTime()));
+  }
+  return true;
+}, {
+  message: "Please select a date of birth for all children",
+  path: ["children"],
 });
 
 // Step 4: Employment - Unified schema with conditional validation

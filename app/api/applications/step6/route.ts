@@ -13,7 +13,6 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('📝 Saving Step 6 data for application:', applicationId);
-    console.log('Step 6 data:', step6Data);
 
     const result = await saveStep6DataNew(applicationId, step6Data);
 

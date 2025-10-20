@@ -59,11 +59,11 @@ export function Step3HomeFinancial({
         move_in_date: null,
         homeowner_or_tenant: '',
         monthly_mortgage_or_rent: 0,
-        monthly_payment_currency: 'EUR',
+        monthly_payment_currency: 'USD',
         current_property_value: 0,
-        property_value_currency: 'EUR',
+        property_value_currency: 'USD',
         mortgage_outstanding: 0,
-        mortgage_outstanding_currency: 'EUR',
+        mortgage_outstanding_currency: 'USD',
         lender_or_landlord_details: '',
         previous_address: '',
         previous_move_in_date: null,
@@ -90,11 +90,11 @@ export function Step3HomeFinancial({
         : undefined,
       homeowner_or_tenant: currentData.homeowner_or_tenant as 'homeowner' | 'tenant' | undefined,
       monthly_mortgage_or_rent: currentData.monthly_mortgage_or_rent || 0,
-      monthly_payment_currency: currentData.monthly_payment_currency || 'EUR',
+      monthly_payment_currency: 'USD',
       current_property_value: currentData.current_property_value || 0,
-      property_value_currency: currentData.property_value_currency || 'EUR',
+      property_value_currency: 'USD',
       mortgage_outstanding: currentData.mortgage_outstanding || 0,
-      mortgage_outstanding_currency: currentData.mortgage_outstanding_currency || 'EUR',
+      mortgage_outstanding_currency: 'USD',
       lender_or_landlord_details: currentData.lender_or_landlord_details,
       previous_address: currentData.previous_address,
       previous_move_in_date: currentData.previous_move_in_date 
@@ -107,7 +107,11 @@ export function Step3HomeFinancial({
       has_children: currentData.has_children,
       children: currentData.children?.map(child => ({
         ...child,
-        date_of_birth: child.date_of_birth instanceof Date ? child.date_of_birth : new Date(child.date_of_birth)
+        date_of_birth: child.date_of_birth instanceof Date 
+          ? child.date_of_birth 
+          : child.date_of_birth 
+            ? new Date(child.date_of_birth) 
+            : undefined
       })) || [],
     },
   });
@@ -123,11 +127,11 @@ export function Step3HomeFinancial({
         : undefined,
       homeowner_or_tenant: currentData.homeowner_or_tenant as 'homeowner' | 'tenant' | undefined,
       monthly_mortgage_or_rent: currentData.monthly_mortgage_or_rent || 0,
-      monthly_payment_currency: currentData.monthly_payment_currency || 'EUR',
+      monthly_payment_currency: 'USD',
       current_property_value: currentData.current_property_value || 0,
-      property_value_currency: currentData.property_value_currency || 'EUR',
+      property_value_currency: 'USD',
       mortgage_outstanding: currentData.mortgage_outstanding || 0,
-      mortgage_outstanding_currency: currentData.mortgage_outstanding_currency || 'EUR',
+      mortgage_outstanding_currency: 'USD',
       lender_or_landlord_details: currentData.lender_or_landlord_details,
       previous_address: currentData.previous_address,
       previous_move_in_date: currentData.previous_move_in_date 
@@ -140,7 +144,11 @@ export function Step3HomeFinancial({
       has_children: currentData.has_children,
       children: currentData.children?.map(child => ({
         ...child,
-        date_of_birth: child.date_of_birth instanceof Date ? child.date_of_birth : new Date(child.date_of_birth)
+        date_of_birth: child.date_of_birth instanceof Date 
+          ? child.date_of_birth 
+          : child.date_of_birth 
+            ? new Date(child.date_of_birth) 
+            : undefined
       })) || [],
     });
   }, [step3, applicantIndex, step2, form, getCurrentApplicantData]);
@@ -179,7 +187,7 @@ export function Step3HomeFinancial({
 
   const addChild = () => {
     const currentChildren = form.getValues('children') || [];
-    form.setValue('children', [...currentChildren, { date_of_birth: new Date() }]);
+    form.setValue('children', [...currentChildren, { date_of_birth: undefined }]);
   };
 
   const removeChild = (index: number) => {
@@ -356,9 +364,7 @@ export function Step3HomeFinancial({
                         <FormControl>
                           <CurrencyInput
                             value={field.value}
-                            currency={form.getValues('monthly_payment_currency')}
                             onValueChange={field.onChange}
-                            onCurrencyChange={(currency) => form.setValue('monthly_payment_currency', currency)}
                             placeholder={homeownerStatus === 'homeowner' ? '2500' : '1500'}
                           />
                         </FormControl>
@@ -477,7 +483,7 @@ export function Step3HomeFinancial({
                                       !field.value && 'text-muted-foreground'
                                     )}
                                   >
-                                    {field.value ? (
+                                    {field.value && field.value instanceof Date && !isNaN(field.value.getTime()) ? (
                                       format(field.value, 'PPP')
                                     ) : (
                                       <span>Select date of birth</span>
