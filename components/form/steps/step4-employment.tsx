@@ -27,6 +27,7 @@ import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { useState } from 'react';
 
 interface Step4Props {
   onNext: (formData?: Step4FormData) => void;
@@ -51,6 +52,7 @@ export function Step4Employment({
   hideNavigation = false 
 }: Step4Props) {
   const { step4, updateStep4 } = useFormStore();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Get current applicant data
   const getCurrentApplicantData = () => {
@@ -110,43 +112,48 @@ export function Step4Employment({
   const watchedAccountantInfo = form.watch('accountant_can_provide_info');
 
   const onSubmit = async (data: Step4FormData) => {
-    if (isMultiApplicant) {
-      // For multi-applicant mode, pass data to parent handler
-      onNext(data);
-    } else {
-      // For single applicant mode, transform and update store
-      const formData = {
-        employment_status: data.employment_status,
-        employment_details: {
-          job_title: data.job_title,
-          employer_name: data.employer_name,
-          employer_address: data.employer_address,
-          gross_annual_salary: data.gross_annual_salary,
-          net_monthly_income: data.net_monthly_income,
-          employment_start_date: data.employment_start_date,
-          previous_employment_details: data.previous_employment_details,
-          business_name: data.business_name,
-          business_address: data.business_address,
-          business_website: data.business_website,
-          company_creation_date: data.company_creation_date,
-          total_gross_annual_income: data.total_gross_annual_income,
-          net_annual_income: data.net_annual_income,
-          company_stake_percentage: data.company_stake_percentage,
-          bonus_overtime_commission_details: data.bonus_overtime_commission_details,
-          accountant_can_provide_info: data.accountant_can_provide_info,
-          accountant_contact_details: data.accountant_contact_details,
-        },
-        financial_commitments: {
-          personal_loans: data.personal_loans,
-          credit_card_debt: data.credit_card_debt,
-          car_loans_lease: data.car_loans_lease,
-          has_credit_or_legal_issues: data.has_credit_or_legal_issues,
-          credit_legal_issues_details: data.credit_legal_issues_details,
-        },
-      };
+    setIsSubmitting(true);
+    try {
+      if (isMultiApplicant) {
+        // For multi-applicant mode, pass data to parent handler
+        await onNext(data);
+      } else {
+        // For single applicant mode, transform and update store
+        const formData = {
+          employment_status: data.employment_status,
+          employment_details: {
+            job_title: data.job_title,
+            employer_name: data.employer_name,
+            employer_address: data.employer_address,
+            gross_annual_salary: data.gross_annual_salary,
+            net_monthly_income: data.net_monthly_income,
+            employment_start_date: data.employment_start_date,
+            previous_employment_details: data.previous_employment_details,
+            business_name: data.business_name,
+            business_address: data.business_address,
+            business_website: data.business_website,
+            company_creation_date: data.company_creation_date,
+            total_gross_annual_income: data.total_gross_annual_income,
+            net_annual_income: data.net_annual_income,
+            company_stake_percentage: data.company_stake_percentage,
+            bonus_overtime_commission_details: data.bonus_overtime_commission_details,
+            accountant_can_provide_info: data.accountant_can_provide_info,
+            accountant_contact_details: data.accountant_contact_details,
+          },
+          financial_commitments: {
+            personal_loans: data.personal_loans,
+            credit_card_debt: data.credit_card_debt,
+            car_loans_lease: data.car_loans_lease,
+            has_credit_or_legal_issues: data.has_credit_or_legal_issues,
+            credit_legal_issues_details: data.credit_legal_issues_details,
+          },
+        };
 
-      updateStep4(formData);
-      onNext();
+        await updateStep4(formData);
+        onNext();
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -826,7 +833,7 @@ export function Step4Employment({
             </CardContent>
           </Card>
 
-          {!hideNavigation && <FormNavigation onNext={() => {}} useSubmitButton={true} />}
+          {!hideNavigation && <FormNavigation onNext={() => {}} useSubmitButton={true} isSubmitting={isSubmitting} />}
         </div>
       </form>
     </Form>

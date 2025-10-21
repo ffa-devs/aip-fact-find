@@ -207,18 +207,18 @@ export function Step5Portfolio({ onNext }: Step5Props) {
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                              <span className="font-medium">Valuation:</span> £{property.current_valuation?.toLocaleString() || '0'}
+                              <span className="font-medium">Valuation:</span> €{property.current_valuation?.toLocaleString() || '0'}
                             </div>
                             <div>
-                              <span className="font-medium">Outstanding:</span> £{property.mortgage_outstanding?.toLocaleString() || '0'}
+                              <span className="font-medium">Outstanding:</span> €{property.mortgage_outstanding?.toLocaleString() || '0'}
                             </div>
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                              <span className="font-medium">Monthly Payment:</span> £{property.monthly_mortgage_payment?.toLocaleString() || '0'}
+                              <span className="font-medium">Monthly Payment:</span> €{property.monthly_mortgage_payment?.toLocaleString() || '0'}
                             </div>
                             <div>
-                              <span className="font-medium">Monthly Rent:</span> £{property.monthly_rent_received?.toLocaleString() || '0'}
+                              <span className="font-medium">Monthly Rent:</span> €{property.monthly_rent_received?.toLocaleString() || '0'}
                             </div>
                           </div>
                         </div>

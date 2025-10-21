@@ -1269,13 +1269,41 @@ export async function saveStep4DataForParticipant(
       employer_address: step4Data.employer_address,
       gross_annual_salary: step4Data.gross_annual_salary,
       net_monthly_income: step4Data.net_monthly_income,
-      employment_start_date: (step4Data.employment_start_date as Date)?.toISOString().split('T')[0],
+      employment_start_date: (() => {
+        const date = step4Data.employment_start_date;
+        if (!date) return null;
+        
+        if (date instanceof Date) {
+          return date.toISOString().split('T')[0];
+        }
+        
+        if (typeof date === 'string') {
+          const parsedDate = new Date(date);
+          return !isNaN(parsedDate.getTime()) ? parsedDate.toISOString().split('T')[0] : null;
+        }
+        
+        return null;
+      })(),
       previous_employment_details: step4Data.previous_employment_details,
       // Self-employed/Director fields
       business_name: step4Data.business_name,
       business_address: step4Data.business_address,
       business_website: step4Data.business_website,
-      company_creation_date: (step4Data.company_creation_date as Date)?.toISOString().split('T')[0],
+      company_creation_date: (() => {
+        const date = step4Data.company_creation_date;
+        if (!date) return null;
+        
+        if (date instanceof Date) {
+          return date.toISOString().split('T')[0];
+        }
+        
+        if (typeof date === 'string' && date.trim()) {
+          const parsedDate = new Date(date);
+          return isNaN(parsedDate.getTime()) ? null : parsedDate.toISOString().split('T')[0];
+        }
+        
+        return null;
+      })(),
       total_gross_annual_income: step4Data.total_gross_annual_income,
       net_annual_income: step4Data.net_annual_income,
       bonus_overtime_commission_details: step4Data.bonus_overtime_commission_details,

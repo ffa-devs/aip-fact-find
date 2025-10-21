@@ -47,6 +47,7 @@ export function Step3HomeFinancial({
   hideNavigation = false 
 }: Step3Props) {
   const { step2, step3, updateStep3 } = useFormStore();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Get current applicant data
   const getCurrentApplicantData = useCallback(() => {
@@ -164,13 +165,18 @@ export function Step3HomeFinancial({
   }, [step2.nationality, form]);
 
   const onSubmit = async (data: Step3Data) => {
-    if (isMultiApplicant) {
-      // For multi-applicant mode, pass data to parent handler
-      onNext(data);
-    } else {
-      // For single applicant mode, update store and proceed
-      updateStep3(data);
-      onNext();
+    setIsSubmitting(true);
+    try {
+      if (isMultiApplicant) {
+        // For multi-applicant mode, pass data to parent handler
+        await onNext(data);
+      } else {
+        // For single applicant mode, update store and proceed
+        await updateStep3(data);
+        onNext();
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -587,7 +593,7 @@ export function Step3HomeFinancial({
           </Card>
         </div>
 
-        {!hideNavigation && <FormNavigation onNext={() => {}} useSubmitButton={true} />}
+        {!hideNavigation && <FormNavigation onNext={() => {}} useSubmitButton={true} isSubmitting={isSubmitting} />}
       </form>
     </Form>
   );
