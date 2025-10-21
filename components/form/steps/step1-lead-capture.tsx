@@ -37,6 +37,7 @@ export function Step1LeadCapture({ onNext }: Step1Props) {
     setGhlContactId, 
     setGhlOpportunityId, 
     ghlContactId,
+    ghlOpportunityId,
     applicationId,
     createNewApplication,
     clearError
@@ -121,16 +122,25 @@ export function Step1LeadCapture({ onNext }: Step1Props) {
         const result = await response.json();
 
         if (result.success && result.contactId) {
+          console.log('🎯 GHL integration result:', result);
+          
           // Update contact ID in store if not already set
           if (!ghlContactId) {
+            console.log('💾 Setting GHL Contact ID:', result.contactId);
             setGhlContactId(result.contactId);
           }
-          if (result.opportunityId && !ghlContactId) {
+          if (result.opportunityId && !ghlOpportunityId) {
+            console.log('💾 Setting GHL Opportunity ID:', result.opportunityId);
             setGhlOpportunityId(result.opportunityId);
           }
 
           // Save GHL IDs to Supabase 
           if (currentApplicationId) {
+            console.log('💾 Saving GHL IDs to database:', { 
+              applicationId: currentApplicationId, 
+              contactId: result.contactId, 
+              opportunityId: result.opportunityId 
+            });
             try {
               const updateResult = await updateApplicationWithGhlId(
                 currentApplicationId,
@@ -139,13 +149,17 @@ export function Step1LeadCapture({ onNext }: Step1Props) {
               );
               
               if (updateResult.error) {
-                console.error('Failed to update application with GHL ID:', updateResult.error);
+                console.error('❌ Failed to update application with GHL ID:', updateResult.error);
                 // Don't block the flow, just log the error
+              } else {
+                console.log('✅ Successfully saved GHL IDs to database');
               }
             } catch (error) {
-              console.error('Error updating application with GHL ID:', error);
+              console.error('❌ Error updating application with GHL ID:', error);
               // Don't block the flow
             }
+          } else {
+            console.warn('⚠️ No application ID found - cannot save GHL IDs to database');
           }
 
           // If existing contact was found, prefill the form with their data
@@ -195,6 +209,13 @@ export function Step1LeadCapture({ onNext }: Step1Props) {
           description: 'Your form data is still saved locally',
         });
       }
+      
+      // Debug: Check final state before proceeding
+      const finalState = useFormStore.getState();
+      console.log('🔍 Step 1 complete - Final GHL state:', { 
+        ghlContactId: finalState.ghlContactId, 
+        ghlOpportunityId: finalState.ghlOpportunityId 
+      });
       
       onNext();
     } finally {

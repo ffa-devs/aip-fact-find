@@ -383,6 +383,41 @@ class GoHighLevelClient {
       return false;
     }
   }
+
+  /**
+   * Update opportunity custom fields
+   */
+  async updateOpportunityCustomFields(
+    opportunityId: string,
+    customFields: Array<{ id: string; field_value: string | number | boolean }>
+  ): Promise<boolean> {
+    try {
+      const headers = await this.getAuthHeaders();
+
+      const response = await fetch(
+        `${GHL_API_BASE}/opportunities/${opportunityId}`,
+        {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify({
+            customFields
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.text();
+        console.error('GHL Update Opportunity Custom Fields Error:', error);
+        return false;
+      }
+
+      console.log('✅ Opportunity custom fields updated:', opportunityId, `${customFields.length} fields`);
+      return true;
+    } catch (error) {
+      console.error('Failed to update opportunity custom fields:', error);
+      return false;
+    }
+  }
 }
 
 // Export singleton instance (no location ID - will use default from Supabase)

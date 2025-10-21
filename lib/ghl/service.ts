@@ -8,6 +8,7 @@ import { ghlClient, type GHLContact } from './client'
 import type { Step1FormData } from '@/lib/validations/form-schemas'
 import { format } from 'date-fns'
 import { supabaseAdmin } from '@/lib/supabase/server'
+import { mapFormDataToCustomFields } from './opportunity-fields'
 
 import pipeline from '@/ghl_pipeline'
 
@@ -151,6 +152,7 @@ export async function createLeadInGHL(data: Step1FormData, applicationId: string
  */
 export async function updateStep2InGHL(
   contactId: string,
+  opportunityId: string | null,
   data: {
     nationality: string
     marital_status: string
@@ -164,15 +166,14 @@ export async function updateStep2InGHL(
     tags.push('Has-Co-Applicant')
   }
 
-  // TODO: Map custom fields with proper IDs from settings
-  // const customFields = [
-  //   { id: 'xxx', key: 'nationality', field_value: data.nationality },
-  //   { id: 'xxx', key: 'marital_status', field_value: data.marital_status.replace('_', ' ') },
-  //   { id: 'xxx', key: 'has_co_applicants', field_value: data.has_co_applicants },
-  // ];
-
+  // Update contact tags
   await ghlClient.updateContact(contactId, { tags })
   await ghlClient.removeTags(contactId, ['AIP-Step1-Only'])
+
+  // Update opportunity custom fields if opportunity exists
+  if (opportunityId) {
+    await updateOpportunityFields(opportunityId, data);
+  }
 }
 
 /**
@@ -180,32 +181,32 @@ export async function updateStep2InGHL(
  */
 export async function updateStep3InGHL(
   contactId: string,
-  data: {
-    homeowner_or_tenant: string
-    tax_country: string
-    has_children: boolean
-  }
+  opportunityId: string | null,
+  data: Record<string, unknown>
 ) {
   const tags = ['AIP-Step3-Completed']
 
-  if (data.homeowner_or_tenant === 'homeowner') {
+  // Extract specific fields for tagging
+  const homeownerOrTenant = data.homeowner_or_tenant as string;
+  const hasChildren = data.has_children as boolean;
+
+  if (homeownerOrTenant === 'homeowner') {
     tags.push('Current-Homeowner')
-  } else {
+  } else if (homeownerOrTenant === 'tenant') {
     tags.push('Current-Tenant')
   }
 
-  if (data.has_children) {
+  if (hasChildren) {
     tags.push('Has-Children')
   }
 
-  // TODO: Map custom fields with proper IDs from settings
-  // const customFields = [
-  //   { id: 'xxx', key: 'homeowner_or_tenant', field_value: data.homeowner_or_tenant },
-  //   { id: 'xxx', key: 'tax_country', field_value: data.tax_country },
-  //   { id: 'xxx', key: 'has_children', field_value: data.has_children },
-  // ];
-
+  // Update contact tags
   await ghlClient.updateContact(contactId, { tags })
+
+  // Update opportunity custom fields with all step 3 data
+  if (opportunityId) {
+    await updateOpportunityFields(opportunityId, data);
+  }
 }
 
 /**
@@ -213,40 +214,41 @@ export async function updateStep3InGHL(
  */
 export async function updateStep4InGHL(
   contactId: string,
-  data: {
-    employment_status: string
-    annual_income: number
-    has_credit_or_legal_issues: boolean
-  }
+  opportunityId: string | null,
+  data: Record<string, unknown>
 ) {
   const tags = ['AIP-Step4-Completed']
 
+  // Extract specific fields for tagging
+  const employmentStatus = data.aip_employment_status as string;
+  const annualIncome = (data.total_gross_annual_income || data.gross_annual_salary) as number;
+  const hasCreditIssues = data.has_credit_or_legal_issues as boolean;
+
   // Employment status tags
-  if (data.employment_status === 'employed') {
+  if (employmentStatus === 'employed') {
     tags.push('AIP-Employed')
-  } else if (data.employment_status === 'self_employed' || data.employment_status === 'director') {
+  } else if (employmentStatus === 'self_employed' || employmentStatus === 'director') {
     tags.push('AIP-Self-Employed')
   }
 
   // Income bracket tags
-  if (data.annual_income >= 100000) {
+  if (annualIncome >= 100000) {
     tags.push('High-Income')
-  } else if (data.annual_income >= 50000) {
+  } else if (annualIncome >= 50000) {
     tags.push('Medium-Income')
   }
 
-  if (data.has_credit_or_legal_issues) {
+  if (hasCreditIssues) {
     tags.push('Credit-Issues-Declared')
   }
 
-  // TODO: Map custom fields with proper IDs from settings
-  // const customFields = [
-  //   { id: 'xxx', key: 'employment_status', field_value: data.employment_status },
-  //   { id: 'xxx', key: 'annual_income', field_value: data.annual_income },
-  //   { id: 'xxx', key: 'has_credit_issues', field_value: data.has_credit_or_legal_issues },
-  // ];
-
+  // Update contact tags
   await ghlClient.updateContact(contactId, { tags })
+
+  // Update opportunity custom fields with all step 4 data
+  if (opportunityId) {
+    await updateOpportunityFields(opportunityId, data);
+  }
 }
 
 /**
@@ -254,28 +256,30 @@ export async function updateStep4InGHL(
  */
 export async function updateStep5InGHL(
   contactId: string,
-  data: {
-    has_rental_properties: boolean
-    property_count?: number
-  }
+  opportunityId: string | null,
+  data: Record<string, unknown>
 ) {
   const tags = ['AIP-Step5-Completed']
 
-  if (data.has_rental_properties && data.property_count && data.property_count > 0) {
+  // Extract specific fields for tagging
+  const hasRentalProperties = data.has_rental_properties as boolean;
+  const propertyCount = data.property_count as number;
+
+  if (hasRentalProperties && propertyCount && propertyCount > 0) {
     tags.push('AIP-Portfolio-Owner')
 
-    if (data.property_count >= 3) {
+    if (propertyCount >= 3) {
       tags.push('Large-Portfolio')
     }
   }
 
-  // TODO: Map custom fields with proper IDs from settings
-  // const customFields = [
-  //   { id: 'xxx', key: 'has_rental_properties', field_value: data.has_rental_properties },
-  //   { id: 'xxx', key: 'rental_property_count', field_value: data.property_count || 0 },
-  // ];
-
+  // Update contact tags
   await ghlClient.updateContact(contactId, { tags })
+
+  // Update opportunity custom fields with all step 5 data
+  if (opportunityId) {
+    await updateOpportunityFields(opportunityId, data);
+  }
 }
 
 /**
@@ -284,15 +288,15 @@ export async function updateStep5InGHL(
 export async function completeApplicationInGHL(
   contactId: string,
   opportunityId: string,
-  data: {
-    purchase_price: number
-    deposit_available: number
-    property_type: string
-    home_status: string
-    urgency_level: string
-  }
+  data: Record<string, unknown>
 ) {
   const tags = ['AIP-Application-Completed']
+
+  // Extract specific fields for processing
+  const urgencyLevel = data.urgency_level as string;
+  const propertyType = data.aip_property_type as string;
+  const homeStatus = data.aip_home_status as string;
+  const depositAvailable = data.deposit_available as number;
 
   // Remove all abandoned tags
   await ghlClient.removeTags(contactId, [
@@ -305,38 +309,29 @@ export async function completeApplicationInGHL(
   ])
 
   // Add urgency tags
-  if (data.urgency_level === 'very_high' || data.urgency_level === 'high') {
+  if (urgencyLevel === 'urgent') {
     tags.push('High-Priority-Lead')
   }
 
   // Add property type tag
-  tags.push(`Property-Type-${data.property_type}`)
+  if (propertyType) {
+    tags.push(`Property-Type-${propertyType}`)
+  }
 
   // Add home status tag
-  if (data.home_status === 'primary_residence') {
+  if (homeStatus === 'main_residence') {
     tags.push('Primary-Residence')
-  } else if (data.home_status === 'second_home') {
+  } else if (homeStatus === 'holiday_home') {
     tags.push('Second-Home')
-  } else {
+  } else if (homeStatus === 'investment') {
     tags.push('Investment-Property')
   }
 
-  // Calculate LTV (Loan to Value) - will be used when custom fields are mapped
-  // const ltv = ((data.purchase_price - data.deposit_available) / data.purchase_price) * 100;
-
-  // TODO: Map custom fields with proper IDs from settings
-  // const customFields = [
-  //   { id: 'xxx', key: 'purchase_price', field_value: data.purchase_price },
-  //   { id: 'xxx', key: 'deposit_available', field_value: data.deposit_available },
-  //   { id: 'xxx', key: 'loan_amount_needed', field_value: data.purchase_price - data.deposit_available },
-  //   { id: 'xxx', key: 'ltv_percentage', field_value: Math.round(ltv) },
-  //   { id: 'xxx', key: 'property_type', field_value: data.property_type },
-  //   { id: 'xxx', key: 'home_status', field_value: data.home_status },
-  //   { id: 'xxx', key: 'urgency_level', field_value: data.urgency_level },
-  //   { id: 'xxx', key: 'application_status', field_value: 'Completed' },
-  // ];
-
+  // Update contact tags
   await ghlClient.updateContact(contactId, { tags })
+
+  // Update opportunity custom fields with all step 6 data
+  await updateOpportunityFields(opportunityId, data);
 
   // Move opportunity to "AIP Fact Find Submitted" stage and set monetary value
   const submittedStageId = getStageIdByName('AIP Fact Find Submitted')
@@ -344,9 +339,9 @@ export async function completeApplicationInGHL(
   if (submittedStageId && opportunityId) {
     await ghlClient.updateOpportunity(opportunityId, {
       pipelineStageId: submittedStageId,
-      monetaryValue: data.deposit_available,
+      monetaryValue: depositAvailable || 0,
     })
-    console.log('✅ Opportunity updated: stage = "AIP Fact Find Submitted", value =', data.deposit_available)
+    console.log('✅ Opportunity updated: stage = "AIP Fact Find Submitted", value =', depositAvailable)
   }
 }
 
@@ -358,6 +353,39 @@ export async function markAsAbandoned(contactId: string, step: number) {
   await ghlClient.addTags(contactId, [tag])
 
   console.log(`📊 Contact ${contactId} marked as abandoned at Step ${step}`)
+}
+
+/**
+ * Update opportunity custom fields with form data
+ * This function maps form data to GHL custom fields and syncs them
+ */
+export async function updateOpportunityFields(
+  opportunityId: string,
+  data: Record<string, unknown>
+): Promise<boolean> {
+  try {
+    // Convert form data to GHL custom field format
+    const customFields = mapFormDataToCustomFields(data);
+    
+    if (customFields.length === 0) {
+      console.log('No custom fields to update for opportunity:', opportunityId);
+      return true;
+    }
+
+    // Update opportunity with custom fields
+    const success = await ghlClient.updateOpportunityCustomFields(opportunityId, customFields);
+    
+    if (success) {
+      console.log(`✅ Updated ${customFields.length} custom fields for opportunity:`, opportunityId);
+    } else {
+      console.error('❌ Failed to update opportunity custom fields:', opportunityId);
+    }
+    
+    return success;
+  } catch (error) {
+    console.error('Error updating opportunity custom fields:', error);
+    return false;
+  }
 }
 
 

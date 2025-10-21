@@ -136,7 +136,7 @@ export function Step2AboutYou({ onNext }: Step2Props) {
   }, [step2.co_applicants, step2.has_co_applicants, form]);
 
   const onSubmit = async (data: Step2FormData) => {
-
+    console.log('🚀 Step 2 onSubmit started');
     setIsSubmitting(true);
     
     try {
@@ -153,6 +153,37 @@ export function Step2AboutYou({ onNext }: Step2Props) {
       
       // Update with database sync
       await updateStep2(transformedData);
+      console.log('💾 Step 2 database save completed, starting GHL sync check...');
+
+      // Sync with GHL if contact and opportunity exist
+      const { ghlContactId, ghlOpportunityId } = useFormStore.getState();
+      console.log('Step 2 GHL sync check:', { ghlContactId, ghlOpportunityId });
+      
+      if (ghlContactId) {
+        console.log('🔄 Starting GHL sync for Step 2...');
+        try {
+          const response = await fetch('/api/gohigh/update-contact', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contactId: ghlContactId,
+              opportunityId: ghlOpportunityId,
+              step: 2,
+              data: transformedData
+            }),
+          });
+
+          if (!response.ok) {
+            console.error('❌ Failed to sync Step 2 with GHL');
+          } else {
+            console.log('✅ Step 2 synced successfully with GHL');
+          }
+        } catch (error) {
+          console.error('❌ Error syncing Step 2 with GHL:', error);
+        }
+      } else {
+        console.log('⚠️ Skipping GHL sync - no contact ID found');
+      }
       
       onNext();
     } catch (error) {

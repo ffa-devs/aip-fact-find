@@ -130,21 +130,11 @@ export function AppSidebar() {
                 const status = getStepStatus(step.number)
                 const isClickable = canNavigateToStep(step.number)
                 
-                // Debug logging
-                console.log(`Step ${step.number}:`, {
-                  status,
-                  isClickable,
-                  currentStep,
-                  isValid: isStepValid(step.number)
-                })
-
                 return (
                   <SidebarMenuItem key={step.number}>
                     <SidebarMenuButton
                       onClick={() => {
-                        console.log(`Clicked step ${step.number}, isClickable: ${isClickable}`)
                         if (isClickable) {
-                          console.log(`Navigating to step ${step.number}`)
                           setCurrentStep(step.number)
                         } else {
                           console.log(`Navigation blocked to step ${step.number}`)

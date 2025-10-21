@@ -36,16 +36,16 @@ export async function PUT(request: NextRequest) {
     // Route to appropriate update function based on step
     switch (step) {
       case 2:
-        await updateStep2InGHL(contactId, data);
+        await updateStep2InGHL(contactId, opportunityId, data);
         break;
       case 3:
-        await updateStep3InGHL(contactId, data);
+        await updateStep3InGHL(contactId, opportunityId, data);
         break;
       case 4:
-        await updateStep4InGHL(contactId, data);
+        await updateStep4InGHL(contactId, opportunityId, data);
         break;
       case 5:
-        await updateStep5InGHL(contactId, data);
+        await updateStep5InGHL(contactId, opportunityId, data);
         break;
       case 6:
         await completeApplicationInGHL(contactId, opportunityId || '', data);

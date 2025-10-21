@@ -150,6 +150,57 @@ export function Step4Employment({
         };
 
         await updateStep4(formData);
+
+        // Sync with GHL if contact and opportunity exist
+        const { ghlContactId, ghlOpportunityId } = useFormStore.getState();
+        if (ghlContactId) {
+          try {
+            // Flatten the formData for GHL sync
+            const flatData = {
+              aip_employment_status: data.employment_status,
+              job_title: data.job_title,
+              employer_name: data.employer_name,
+              employer_address: data.employer_address,
+              gross_annual_salary: data.gross_annual_salary,
+              net_monthly_income: data.net_monthly_income,
+              employment_start_date: data.employment_start_date,
+              previous_employment_details: data.previous_employment_details,
+              business_name: data.business_name,
+              business_address: data.business_address,
+              business_website: data.business_website,
+              company_creation_date: data.company_creation_date,
+              total_gross_annual_income: data.total_gross_annual_income,
+              net_annual_income: data.net_annual_income,
+              company_stake_percentage: data.company_stake_percentage,
+              bonus_overtime_commission_details: data.bonus_overtime_commission_details,
+              accountant_can_provide_info: data.accountant_can_provide_info,
+              accountant_contact_details: data.accountant_contact_details,
+              personal_loans: data.personal_loans,
+              credit_card_debt: data.credit_card_debt,
+              car_loans_lease: data.car_loans_lease,
+              has_credit_or_legal_issues: data.has_credit_or_legal_issues,
+              credit_legal_issues_details: data.credit_legal_issues_details,
+            };
+
+            const response = await fetch('/api/gohigh/update-contact', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contactId: ghlContactId,
+                opportunityId: ghlOpportunityId,
+                step: 4,
+                data: flatData
+              }),
+            });
+
+            if (!response.ok) {
+              console.error('Failed to sync Step 4 with GHL');
+            }
+          } catch (error) {
+            console.error('Error syncing Step 4 with GHL:', error);
+          }
+        }
+
         onNext();
       }
     } finally {

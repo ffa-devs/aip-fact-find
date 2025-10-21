@@ -110,6 +110,63 @@ export function Step4MultiApplicant({ onNext }: Step4MultiApplicantProps) {
         },
       };
       updateStep4(storeData);
+
+      // Sync with GHL for primary applicant only
+      const { ghlContactId, ghlOpportunityId } = useFormStore.getState();
+      console.log('Step 4 Multi-Applicant GHL sync check (Primary):', { ghlContactId, ghlOpportunityId });
+      
+      if (ghlContactId) {
+        console.log('🔄 Starting GHL sync for Step 4 (Primary Applicant)...');
+        try {
+          // Flatten the formData for GHL sync
+          const flatData = {
+            aip_employment_status: formData.employment_status,
+            job_title: formData.job_title,
+            employer_name: formData.employer_name,
+            employer_address: formData.employer_address,
+            gross_annual_salary: formData.gross_annual_salary,
+            net_monthly_income: formData.net_monthly_income,
+            employment_start_date: formData.employment_start_date,
+            previous_employment_details: formData.previous_employment_details,
+            business_name: formData.business_name,
+            business_address: formData.business_address,
+            business_website: formData.business_website,
+            company_creation_date: formData.company_creation_date,
+            total_gross_annual_income: formData.total_gross_annual_income,
+            net_annual_income: formData.net_annual_income,
+            company_stake_percentage: formData.company_stake_percentage,
+            bonus_overtime_commission_details: formData.bonus_overtime_commission_details,
+            accountant_can_provide_info: formData.accountant_can_provide_info,
+            accountant_contact_details: formData.accountant_contact_details,
+            personal_loans: formData.personal_loans,
+            credit_card_debt: formData.credit_card_debt,
+            car_loans_lease: formData.car_loans_lease,
+            has_credit_or_legal_issues: formData.has_credit_or_legal_issues,
+            credit_legal_issues_details: formData.credit_legal_issues_details,
+          };
+
+          const response = await fetch('/api/gohigh/update-contact', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contactId: ghlContactId,
+              opportunityId: ghlOpportunityId,
+              step: 4,
+              data: flatData
+            }),
+          });
+
+          if (!response.ok) {
+            console.error('❌ Failed to sync Step 4 with GHL');
+          } else {
+            console.log('✅ Step 4 synced successfully with GHL');
+          }
+        } catch (error) {
+          console.error('❌ Error syncing Step 4 with GHL:', error);
+        }
+      } else {
+        console.log('⚠️ Skipping GHL sync - no contact ID found');
+      }
     } else {
       // Co-applicant
       const coApplicantIndex = selectedApplicantIndex - 1;

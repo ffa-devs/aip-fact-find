@@ -13,7 +13,7 @@ interface Step3MultiApplicantProps {
 }
 
 export function Step3MultiApplicant({ onNext }: Step3MultiApplicantProps) {
-  const { step2, step3, updateStep3, updateStep3ForApplicant, previousStep } = useFormStore();
+  const { step2, step3, updateStep3, updateStep3ForApplicant } = useFormStore();
   const selectedApplicantIndex = useApplicantSelector();
   const hasResetRef = useRef(false);
 
@@ -91,6 +91,36 @@ export function Step3MultiApplicant({ onNext }: Step3MultiApplicantProps) {
         // Primary applicant - update local state and sync to database
         await updateStep3(formData);
         await updateStep3ForApplicant(selectedApplicantIndex, formData);
+
+        // Sync with GHL for primary applicant only
+        const { ghlContactId, ghlOpportunityId } = useFormStore.getState();
+        console.log('Step 3 Multi-Applicant GHL sync check (Primary):', { ghlContactId, ghlOpportunityId });
+        
+        if (ghlContactId) {
+          console.log('🔄 Starting GHL sync for Step 3 (Primary Applicant)...');
+          try {
+            const response = await fetch('/api/gohigh/update-contact', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contactId: ghlContactId,
+                opportunityId: ghlOpportunityId,
+                step: 3,
+                data: formData
+              }),
+            });
+
+            if (!response.ok) {
+              console.error('❌ Failed to sync Step 3 with GHL');
+            } else {
+              console.log('✅ Step 3 synced successfully with GHL');
+            }
+          } catch (error) {
+            console.error('❌ Error syncing Step 3 with GHL:', error);
+          }
+        } else {
+          console.log('⚠️ Skipping GHL sync - no contact ID found');
+        }
       } else {
         // Co-applicant - save to database and update local state
         await updateStep3ForApplicant(selectedApplicantIndex, formData);

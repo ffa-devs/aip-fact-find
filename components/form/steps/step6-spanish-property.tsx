@@ -90,6 +90,45 @@ export function Step6SpanishProperty({ onNext }: Step6Props) {
 
       // Update with database sync (final step submission)
       await updateStep6(formData);
+
+      // Complete application in GHL if contact and opportunity exist
+      const { ghlContactId, ghlOpportunityId } = useFormStore.getState();
+      if (ghlContactId && ghlOpportunityId) {
+        try {
+          // Flatten and map data for GHL final submission
+          const ghlData = {
+            urgency_level: data.urgency_level,
+            aip_purchase_price: data.purchase_price,
+            deposit_available: data.deposit_available,
+            property_address: data.property_address,
+            aip_home_status: data.home_status,
+            aip_property_type: data.property_type,
+            real_estate_agent_contact: data.real_estate_agent_contact,
+            lawyer_contact: data.lawyer_contact,
+            additional_information: data.additional_information,
+          };
+
+          const response = await fetch('/api/gohigh/update-contact', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contactId: ghlContactId,
+              opportunityId: ghlOpportunityId,
+              step: 6,
+              data: ghlData
+            }),
+          });
+
+          if (!response.ok) {
+            console.error('Failed to complete application in GHL');
+          } else {
+            console.log('✅ Application completed successfully in GHL');
+          }
+        } catch (error) {
+          console.error('Error completing application in GHL:', error);
+        }
+      }
+
       toast.success('Application submitted successfully!');
       onNext();
     } catch (error) {

@@ -173,6 +173,37 @@ export function Step3HomeFinancial({
       } else {
         // For single applicant mode, update store and proceed
         await updateStep3(data);
+
+        // Sync with GHL if contact and opportunity exist
+        const { ghlContactId, ghlOpportunityId } = useFormStore.getState();
+        console.log('Step 3 GHL sync check:', { ghlContactId, ghlOpportunityId });
+        
+        if (ghlContactId) {
+          console.log('🔄 Starting GHL sync for Step 3...');
+          try {
+            const response = await fetch('/api/gohigh/update-contact', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contactId: ghlContactId,
+                opportunityId: ghlOpportunityId,
+                step: 3,
+                data
+              }),
+            });
+
+            if (!response.ok) {
+              console.error('❌ Failed to sync Step 3 with GHL');
+            } else {
+              console.log('✅ Step 3 synced successfully with GHL');
+            }
+          } catch (error) {
+            console.error('❌ Error syncing Step 3 with GHL:', error);
+          }
+        } else {
+          console.log('⚠️ Skipping GHL sync - no contact ID found');
+        }
+
         onNext();
       }
     } finally {

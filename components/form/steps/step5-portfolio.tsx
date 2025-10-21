@@ -65,6 +65,30 @@ export function Step5Portfolio({ onNext }: Step5Props) {
 
       // Update with database sync
       await updateStep5(formData);
+
+      // Sync with GHL if contact and opportunity exist
+      const { ghlContactId, ghlOpportunityId } = useFormStore.getState();
+      if (ghlContactId) {
+        try {
+          const response = await fetch('/api/gohigh/update-contact', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contactId: ghlContactId,
+              opportunityId: ghlOpportunityId,
+              step: 5,
+              data: formData
+            }),
+          });
+
+          if (!response.ok) {
+            console.error('Failed to sync Step 5 with GHL');
+          }
+        } catch (error) {
+          console.error('Error syncing Step 5 with GHL:', error);
+        }
+      }
+
       onNext();
     } catch (error) {
       console.error('Error saving Step 5 data:', error);

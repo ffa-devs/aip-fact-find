@@ -61,6 +61,22 @@ export async function findOrCreatePerson(personData: {
   try {
     console.log('🔍 Finding or creating person with email:', personData.email);
 
+    // Calculate age from date_of_birth
+    const calculateAge = (dateOfBirth: Date): number => {
+      const today = new Date();
+      const birthDate = new Date(dateOfBirth);
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      
+      return age;
+    };
+
+    const age = calculateAge(personData.date_of_birth);
+
     // First try to find existing person
     const { data: existingPerson, error: findError } = await supabase
       .from('people')
@@ -83,6 +99,7 @@ export async function findOrCreatePerson(personData: {
           first_name: personData.first_name,
           last_name: personData.last_name,
           date_of_birth: personData.date_of_birth.toISOString().split('T')[0],
+          age: age, // Calculate and save age
           telephone: personData.telephone,
           mobile: personData.mobile,
           nationality: personData.nationality,
@@ -108,6 +125,7 @@ export async function findOrCreatePerson(personData: {
         first_name: personData.first_name,
         last_name: personData.last_name,
         date_of_birth: personData.date_of_birth.toISOString().split('T')[0],
+        age: age, // Calculate and save age
         telephone: personData.telephone,
         mobile: personData.mobile,
         nationality: personData.nationality
@@ -122,6 +140,7 @@ export async function findOrCreatePerson(personData: {
         first_name: personData.first_name,
         last_name: personData.last_name,
         date_of_birth: personData.date_of_birth.toISOString().split('T')[0],
+        age: age,
         telephone: personData.telephone,
         mobile: personData.mobile,
         nationality: personData.nationality
@@ -286,12 +305,13 @@ export async function saveStep2DataNew(
       return { success: false, error: 'Primary participant not found' };
     }
 
-    // Update person with nationality and telephone
+    // Update person with nationality, telephone, and LinkedIn profile
     const { error: personUpdateError } = await supabase
       .from('people')
       .update({
         nationality: step2Data.nationality,
         telephone: step2Data.telephone,
+        linkedin_profile_url: step2Data.linkedin_profile_url || null,
         updated_at: new Date().toISOString()
       })
       .eq('id', primaryParticipant.person_id);
@@ -340,7 +360,7 @@ export async function saveStep2DataNew(
         });
 
         if (coPersonResult.success && coPersonResult.person) {
-          // Create co-applicant participant
+          // Create co-applicant participant (age will be calculated from date_of_birth by findOrCreatePerson)
           await createOrUpdateParticipant(
             applicationId,
             coPersonResult.person.id,
@@ -348,7 +368,6 @@ export async function saveStep2DataNew(
             i + 2, // Start from 2 (after primary)
             {
               marital_status: coApplicant.marital_status,
-              age: coApplicant.age,
               employment_status: coApplicant.employment_status
             }
           );
@@ -540,7 +559,7 @@ export async function saveStep3DataNew(
   try {
     console.log('💾 Saving Step 3 data for application:', applicationId);
     
-    // Update current step
+    // Update current step (without move-in date fields until migration is created)
     const { error: stepError } = await supabase
       .from('applications')
       .update({ 
@@ -764,10 +783,20 @@ export async function saveStep4DataNew(
           .delete()
           .eq('participant_id', primaryParticipant.id);
 
-        // Insert new employment details (without employment_status - that's in participants table)
+        // Insert new employment details with proper date handling
         const employmentData = {
           participant_id: primaryParticipant.id,
-          ...step4Data.employment_details
+          ...step4Data.employment_details,
+          employment_start_date: (() => {
+            const date = step4Data.employment_details.employment_start_date;
+            if (!date) return null;
+            return date instanceof Date ? date.toISOString().split('T')[0] : new Date(date).toISOString().split('T')[0];
+          })(),
+          company_creation_date: (() => {
+            const date = step4Data.employment_details.company_creation_date;
+            if (!date) return null;
+            return date instanceof Date ? date.toISOString().split('T')[0] : new Date(date).toISOString().split('T')[0];
+          })()
         };
 
         const { error: empError } = await supabase
@@ -797,7 +826,7 @@ export async function saveStep4DataNew(
           .delete()
           .eq('participant_id', primaryParticipant.id);
 
-        // Insert new financial commitments (treating as a single record)
+        // Insert new financial commitments
         const financialData = {
           participant_id: primaryParticipant.id,
           ...step4Data.financial_commitments
@@ -851,7 +880,17 @@ export async function saveStep4DataNew(
 
             const coEmploymentData = {
               participant_id: coParticipant.id,
-              ...coApplicant.employment_details
+              ...coApplicant.employment_details,
+              employment_start_date: (() => {
+                const date = coApplicant.employment_details.employment_start_date;
+                if (!date) return null;
+                return date instanceof Date ? date.toISOString().split('T')[0] : new Date(date).toISOString().split('T')[0];
+              })(),
+              company_creation_date: (() => {
+                const date = coApplicant.employment_details.company_creation_date;
+                if (!date) return null;
+                return date instanceof Date ? date.toISOString().split('T')[0] : new Date(date).toISOString().split('T')[0];
+              })()
             };
 
             const { error: coEmpError } = await supabase
