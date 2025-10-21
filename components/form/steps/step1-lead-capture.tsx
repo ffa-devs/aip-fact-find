@@ -87,7 +87,6 @@ export function Step1LeadCapture({ onNext }: Step1Props) {
     clearError(); // Clear any previous errors
     
     try {
-      console.log('Step 1 onSubmit started - about to call onNext()');
       
       // Create application if it doesn't exist
       let currentApplicationId = applicationId;
@@ -112,8 +111,6 @@ export function Step1LeadCapture({ onNext }: Step1Props) {
       }
       
       // Always sync with GHL (create or update contact)
-      console.log('Skipping GHL integration for debugging...');
-      /*
       try {
         const response = await fetch('/api/gohigh/create-lead', {
           method: 'POST',
@@ -198,9 +195,7 @@ export function Step1LeadCapture({ onNext }: Step1Props) {
           description: 'Your form data is still saved locally',
         });
       }
-      */
       
-      console.log('Step 1 onSubmit completed - calling onNext()');
       onNext();
     } finally {
       setIsSubmitting(false);
