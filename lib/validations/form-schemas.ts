@@ -93,6 +93,7 @@ export const step3Schema = z.object({
   previous_move_out_date: z.date().optional(),
   tax_country: z.string().min(1, 'Tax country is required'),
   has_children: z.boolean(),
+  same_children_as_primary: z.boolean().default(false),
   children: z.array(
     z.object({
       date_of_birth: z.date({ message: 'Child date of birth is required' }),

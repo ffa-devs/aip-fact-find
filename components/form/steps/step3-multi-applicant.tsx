@@ -1,13 +1,12 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useFormStore } from '@/lib/store/form-store';
 import { Step3HomeFinancial } from './step3-home-financial';
 import { Step3FormData } from '@/lib/validations/form-schemas';
-import { Button } from '@/components/ui/button';
+
 import { User, Users } from 'lucide-react';
 import { useApplicantSelector } from '@/hooks/use-applicant-selector';
-import { useRef } from 'react';
 
 interface Step3MultiApplicantProps {
   onNext: () => void;
@@ -71,6 +70,7 @@ export function Step3MultiApplicant({ onNext }: Step3MultiApplicantProps) {
             previous_move_out_date: null,
             tax_country: '',
             has_children: false,
+            same_children_as_primary: false,
             children: [],
           };
         });
@@ -114,19 +114,24 @@ export function Step3MultiApplicant({ onNext }: Step3MultiApplicantProps) {
           previous_move_out_date: formData.previous_move_out_date || null,
           tax_country: formData.tax_country,
           has_children: formData.has_children,
+          same_children_as_primary: formData.same_children_as_primary || false,
           children: formData.children || [],
         };
         updateStep3({ co_applicants: currentCoApplicants });
       }
+      
+      // After successful form submission, proceed to next step/applicant
+      proceedToNextApplicantOrStep();
     } catch (error) {
       console.error('Error saving Step 3 data:', error);
       // Continue with the flow even if database sync fails
+      proceedToNextApplicantOrStep();
     }
   };
 
 
 
-  const handleContinue = () => {
+  const proceedToNextApplicantOrStep = () => {
     const allApplicants = getAllApplicants();
     
     if (selectedApplicantIndex < allApplicants.length - 1) {
@@ -146,19 +151,6 @@ export function Step3MultiApplicant({ onNext }: Step3MultiApplicantProps) {
     }
   };
 
-  const handleBack = () => {
-    if (selectedApplicantIndex > 0) {
-      // Go to previous applicant
-      setSelectedApplicantIndex(selectedApplicantIndex - 1);
-      window.dispatchEvent(new CustomEvent('applicantChange', { 
-        detail: { index: selectedApplicantIndex - 1 } 
-      }));
-    } else {
-      // First applicant, go to previous step
-      previousStep();
-    }
-  };
-
   if (!step2.has_co_applicants) {
     // No co-applicants, use original component
     return <Step3HomeFinancial onNext={onNext} />;
@@ -166,7 +158,6 @@ export function Step3MultiApplicant({ onNext }: Step3MultiApplicantProps) {
 
   const allApplicants = getAllApplicants();
   const currentApplicant = allApplicants[selectedApplicantIndex];
-  const isLastApplicant = selectedApplicantIndex === allApplicants.length - 1;
 
   return (
     <div className="space-y-8">
@@ -197,38 +188,8 @@ export function Step3MultiApplicant({ onNext }: Step3MultiApplicantProps) {
         onNext={handleApplicantFormNext}
         applicantIndex={selectedApplicantIndex}
         isMultiApplicant={true}
-        hideNavigation={true}
+        hideNavigation={false}
       />
-
-      {/* Navigation */}
-      <div className="flex justify-between pt-6">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={handleBack}
-          className="px-8 py-3"
-        >
-          Back
-        </Button>
-        
-        <div className="flex gap-4">
-          {/* <Button
-            type="button"
-            variant="outline"
-            className="px-8 py-3"
-          >
-            Save for Later
-          </Button>
-           */}
-          <Button
-            onClick={handleContinue}
-            className="px-8 py-3 text-white"
-            style={{ backgroundColor: '#234c8a' }}
-          >
-            {isLastApplicant ? 'Next Step' : 'Continue'}
-          </Button>
-        </div>
-      </div>
     </div>
   );
 }

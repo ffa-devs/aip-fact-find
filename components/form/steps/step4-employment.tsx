@@ -166,7 +166,7 @@ export function Step4Employment({
 
   return (
     <Form {...form}>
-      <form className="space-y-6">
+      <form onSubmit={form.handleSubmit(onSubmit, onError)} className="space-y-6">
         <div className="space-y-4">
 
           {/* Employment Status */}
@@ -826,7 +826,7 @@ export function Step4Employment({
             </CardContent>
           </Card>
 
-          {!hideNavigation && <FormNavigation onNext={() => form.handleSubmit(onSubmit, onError)()} />}
+          {!hideNavigation && <FormNavigation onNext={() => {}} useSubmitButton={true} />}
         </div>
       </form>
     </Form>

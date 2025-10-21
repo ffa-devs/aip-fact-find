@@ -108,7 +108,7 @@ interface FormActions {
   
   // Database operations
   createNewApplication: (ghlContactId?: string) => Promise<string | null>;
-  loadApplication: (applicationId: string) => Promise<boolean>;
+  loadApplication: (applicationId: string, preserveCurrentStep?: boolean) => Promise<boolean>;
   saveCurrentProgress: () => Promise<void>;
   
   // Validation functions
@@ -290,7 +290,10 @@ export const useFormStore = create<FormState & FormActions>()(
         }
       },
 
-      setCurrentStep: (step) => set({ currentStep: step }),
+      setCurrentStep: (step) => {
+        console.log('setCurrentStep called with:', step)
+        set({ currentStep: step })
+      },
 
       setApplicationId: (id) => set({ applicationId: id }),
 
@@ -300,10 +303,13 @@ export const useFormStore = create<FormState & FormActions>()(
 
       setCompleted: (completed) => set({ isCompleted: completed }),
 
-      nextStep: () =>
-        set((state) => ({
-          currentStep: Math.min(state.currentStep + 1, 6),
-        })),
+      nextStep: () => {
+        const currentStep = get().currentStep
+        console.log('nextStep called - currentStep before:', currentStep)
+        const newStep = Math.min(currentStep + 1, 6)
+        console.log('nextStep called - setting to:', newStep)
+        set({ currentStep: newStep })
+      },
 
       previousStep: () =>
         set((state) => ({
@@ -348,15 +354,17 @@ export const useFormStore = create<FormState & FormActions>()(
         }
       },
 
-      loadApplication: async (applicationId: string) => {
+      loadApplication: async (applicationId: string, preserveCurrentStep = false) => {
         try {
           const result = await loadApplicationData(applicationId);
           if (result.data) {
             const formState = transformDatabaseToFormStateNew(result.data);
             if (formState) {
               // Update all form state from database
+              const currentStepToUse = preserveCurrentStep ? get().currentStep : formState.currentStep;
               set({
                 ...formState,
+                currentStep: currentStepToUse,
                 lastError: null,
               });
               return true;

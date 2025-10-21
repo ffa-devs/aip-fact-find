@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react';
 import { useFormStore } from '@/lib/store/form-store';
 import { Step4Employment } from './step4-employment';
 import { Step4FormData } from '@/lib/validations/form-schemas';
-import { Button } from '@/components/ui/button';
+
 import { User, Users } from 'lucide-react';
 import { useApplicantSelector } from '@/hooks/use-applicant-selector';
 
@@ -13,7 +13,7 @@ interface Step4MultiApplicantProps {
 }
 
 export function Step4MultiApplicant({ onNext }: Step4MultiApplicantProps) {
-  const { step2, step4, updateStep4, updateStep4ForApplicant, previousStep } = useFormStore();
+  const { step2, step4, updateStep4, updateStep4ForApplicant } = useFormStore();
   const selectedApplicantIndex = useApplicantSelector();
   const hasResetRef = useRef(false);
 
@@ -145,34 +145,27 @@ export function Step4MultiApplicant({ onNext }: Step4MultiApplicantProps) {
       };
       updateStep4({ co_applicants: currentCoApplicants });
     }
+      // After successful form submission, proceed to next step/applicant
+      proceedToNextApplicantOrStep();
     } catch (error) {
       console.error('Error saving Step 4 data:', error);
       // Continue with the flow even if database sync fails
+      proceedToNextApplicantOrStep();
     }
   };
 
-  const handleContinue = () => {
+  const proceedToNextApplicantOrStep = () => {
     const allApplicants = getAllApplicants();
     
     if (selectedApplicantIndex < allApplicants.length - 1) {
       // Go to next applicant
       setSelectedApplicantIndex(selectedApplicantIndex + 1);
+      window.dispatchEvent(new CustomEvent('applicantChange', { 
+        detail: { index: selectedApplicantIndex + 1 } 
+      }));
     } else {
       // Last applicant, go to next step
       onNext();
-    }
-  };
-
-  const handleBack = () => {
-    if (selectedApplicantIndex > 0) {
-      // Go to previous applicant
-      setSelectedApplicantIndex(selectedApplicantIndex - 1);
-      window.dispatchEvent(new CustomEvent('applicantChange', { 
-        detail: { index: selectedApplicantIndex - 1 } 
-      }));
-    } else {
-      // First applicant, go to previous step
-      previousStep();
     }
   };
 
@@ -183,7 +176,6 @@ export function Step4MultiApplicant({ onNext }: Step4MultiApplicantProps) {
 
   const allApplicants = getAllApplicants();
   const currentApplicant = allApplicants[selectedApplicantIndex];
-  const isLastApplicant = selectedApplicantIndex === allApplicants.length - 1;
 
   return (
     <div className="space-y-8">
@@ -214,38 +206,8 @@ export function Step4MultiApplicant({ onNext }: Step4MultiApplicantProps) {
         onNext={handleApplicantFormNext}
         applicantIndex={selectedApplicantIndex}
         isMultiApplicant={true}
-        hideNavigation={true}
+        hideNavigation={false}
       />
-
-      {/* Navigation */}
-      <div className="flex justify-between pt-6">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={handleBack}
-          className="px-8 py-3"
-        >
-          Back
-        </Button>
-        
-        <div className="flex gap-4">
-          {/* <Button
-            type="button"
-            variant="outline"
-            className="px-8 py-3"
-          >
-            Save for Later
-          </Button> */}
-          
-          <Button
-            onClick={handleContinue}
-            className="px-8 py-3 text-white"
-            style={{ backgroundColor: '#234c8a' }}
-          >
-            {isLastApplicant ? 'Next Step' : 'Continue'}
-          </Button>
-        </div>
-      </div>
     </div>
   );
 }

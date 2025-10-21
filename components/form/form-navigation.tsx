@@ -8,12 +8,14 @@ interface FormNavigationProps {
   onNext: () => void;
   isSubmitting?: boolean;
   showBack?: boolean;
+  useSubmitButton?: boolean; // true for form onSubmit pattern, false for onNext pattern
 }
 
 export function FormNavigation({
   onNext,
   isSubmitting = false,
   showBack = true,
+  useSubmitButton = false,
 }: FormNavigationProps) {
   const { currentStep, previousStep } = useFormStore();
 
@@ -63,10 +65,10 @@ export function FormNavigation({
         )}
          */}
         <Button 
-          type="button" 
+          type={useSubmitButton ? "submit" : "button"} 
           size="lg" 
           disabled={isSubmitting}
-          onClick={onNext}
+          onClick={!useSubmitButton ? onNext : undefined}
           className="bg-[#234c8a] text-white hover:bg-[#1e3f73] px-8 py-3 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

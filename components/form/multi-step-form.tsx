@@ -82,7 +82,9 @@ export function MultiStepForm() {
   }, [applicationId, saveCurrentProgress])
 
   const handleNext = () => {
+    console.log('handleNext called - currentStep before:', currentStep)
     nextStep()
+    console.log('handleNext called - after nextStep()')
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 

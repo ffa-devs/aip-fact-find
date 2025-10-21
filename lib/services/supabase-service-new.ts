@@ -640,6 +640,7 @@ export async function saveStep3DataNew(
             lender_or_landlord_details: coApplicant.lender_or_landlord_details,
             tax_country: coApplicant.tax_country,
             same_address_as_primary: coApplicant.same_address_as_primary,
+            same_children_as_primary: coApplicant.same_children_as_primary,
             updated_at: new Date().toISOString()
           })
           .eq('application_id', applicationId)

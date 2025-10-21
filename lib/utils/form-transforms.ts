@@ -91,6 +91,7 @@ export function transformDatabaseToFormStateNew(dbData: any): FormState | null {
           previous_move_out_date: null,
           tax_country: coParticipant.tax_country || '',
           has_children: (coParticipant.person_children?.length || 0) > 0,
+          same_children_as_primary: coParticipant.same_children_as_primary || false,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           children: (coParticipant.person_children || []).map((child: any) => ({
             date_of_birth: child.date_of_birth ? new Date(child.date_of_birth) : new Date(),

@@ -178,6 +178,7 @@ export interface FormState {
       previous_move_out_date: Date | null;
       tax_country: string;
       has_children: boolean;
+      same_children_as_primary?: boolean;
       children: Child[];
     }>;
   };

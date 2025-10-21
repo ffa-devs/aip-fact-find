@@ -71,6 +71,7 @@ export function Step3HomeFinancial({
         previous_move_out_date: null,
         tax_country: '',
         has_children: false,
+        same_children_as_primary: false,
         children: [],
       };
     }
@@ -106,6 +107,7 @@ export function Step3HomeFinancial({
         : undefined,
       tax_country: currentData.tax_country || step2.nationality || '',
       has_children: currentData.has_children,
+      same_children_as_primary: applicantIndex > 0 ? (currentData as { same_children_as_primary?: boolean }).same_children_as_primary || false : false,
       children: currentData.children?.map(child => ({
         ...child,
         date_of_birth: child.date_of_birth instanceof Date 
@@ -207,7 +209,7 @@ export function Step3HomeFinancial({
 
   return (
     <Form {...form}>
-      <form className="space-y-6">
+      <form onSubmit={form.handleSubmit(onSubmit, onError)} className="space-y-6">
         <div className="space-y-6">
           {/* Current Address Section */}
           <Card>
@@ -457,16 +459,67 @@ export function Step3HomeFinancial({
                 )}
               />
 
+              {/* Same Children as Primary - Only show for co-applicants */}
+              {isMultiApplicant && applicantIndex > 0 && (
+                <FormField
+                  control={form.control}
+                  name="same_children_as_primary"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={(checked) => {
+                            field.onChange(checked);
+                            if (checked) {
+                              // If same children as primary, copy primary's children and set has_children to primary's value
+                              const primaryData = step3;
+                              form.setValue('has_children', primaryData.has_children);
+                              setShowChildren(primaryData.has_children);
+                              if (primaryData.has_children && primaryData.children) {
+                                form.setValue('children', [...primaryData.children]);
+                              } else {
+                                form.setValue('children', []);
+                              }
+                            }
+                          }}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel className="text-sm font-medium">
+                          Same children as primary applicant
+                        </FormLabel>
+                        <FormDescription>
+                          Check this if you share the same children as the primary applicant
+                        </FormDescription>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+              )}
+
               {showChildren && (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm font-medium">Children</h3>
-                    <ChildModal
-                      onSave={addChild}
-                      isCoApplicant={isMultiApplicant}
-                      applicantIndex={applicantIndex}
-                    />
+                    {/* Only show Add Child button if not using same children as primary */}
+                    {!(isMultiApplicant && applicantIndex > 0 && form.watch('same_children_as_primary')) && (
+                      <ChildModal
+                        onSave={addChild}
+                        isCoApplicant={isMultiApplicant}
+                        applicantIndex={applicantIndex}
+                      />
+                    )}
                   </div>
+
+                  {/* Show message when using same children as primary */}
+                  {isMultiApplicant && applicantIndex > 0 && form.watch('same_children_as_primary') && (
+                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="text-sm text-blue-800">
+                        Using the same children as the primary applicant. To modify children, uncheck &quot;Same children as primary applicant&quot; above.
+                      </p>
+                    </div>
+                  )}
 
                   {/* Children List */}
                   {watchedChildren?.map((child, index) => (
@@ -482,32 +535,42 @@ export function Step3HomeFinancial({
                               Same address as primary
                             </span>
                           )}
+                          {isMultiApplicant && applicantIndex > 0 && form.watch('same_children_as_primary') && (
+                            <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                              From primary applicant
+                            </span>
+                          )}
                         </p>
                       </div>
                       <div className="flex gap-2">
-                        <ChildModal
-                          editingChild={{ 
-                            ...child, 
-                            index,
-                            same_address_as_primary: child.same_address_as_primary || false
-                          }}
-                          onSave={(updatedChild) => updateChild(index, updatedChild)}
-                          isCoApplicant={isMultiApplicant}
-                          applicantIndex={applicantIndex}
-                          trigger={
-                            <Button variant="ghost" size="sm">
-                              <Edit2 className="h-4 w-4" />
+                        {/* Only show edit/delete if not using same children as primary */}
+                        {!(isMultiApplicant && applicantIndex > 0 && form.watch('same_children_as_primary')) && (
+                          <>
+                            <ChildModal
+                              editingChild={{ 
+                                ...child, 
+                                index,
+                                same_address_as_primary: child.same_address_as_primary || false
+                              }}
+                              onSave={(updatedChild) => updateChild(index, updatedChild)}
+                              isCoApplicant={isMultiApplicant}
+                              applicantIndex={applicantIndex}
+                              trigger={
+                                <Button variant="ghost" size="sm">
+                                  <Edit2 className="h-4 w-4" />
+                                </Button>
+                              }
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeChild(index)}
+                            >
+                              <X className="h-4 w-4" />
                             </Button>
-                          }
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeChild(index)}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
+                          </>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -524,7 +587,7 @@ export function Step3HomeFinancial({
           </Card>
         </div>
 
-        {!hideNavigation && <FormNavigation onNext={() => form.handleSubmit(onSubmit, onError)()} />}
+        {!hideNavigation && <FormNavigation onNext={() => {}} useSubmitButton={true} />}
       </form>
     </Form>
   );
