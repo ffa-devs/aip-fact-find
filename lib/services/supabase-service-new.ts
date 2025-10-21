@@ -286,12 +286,13 @@ export async function saveStep2DataNew(
       return { success: false, error: 'Primary participant not found' };
     }
 
-    // Update person with nationality and telephone
+    // Update person with nationality, telephone, and LinkedIn profile
     const { error: personUpdateError } = await supabase
       .from('people')
       .update({
         nationality: step2Data.nationality,
         telephone: step2Data.telephone,
+        linkedin_profile_url: step2Data.linkedin_profile_url || null,
         updated_at: new Date().toISOString()
       })
       .eq('id', primaryParticipant.person_id);
@@ -607,6 +608,7 @@ export async function saveStep3DataNew(
             person_id: primaryParticipant.person_id,
             date_of_birth: formattedDate,
             age: age,
+            same_address_as_primary: child.same_address_as_primary || false,
           };
         });
 
@@ -681,6 +683,7 @@ export async function saveStep3DataNew(
                 person_id: coParticipant.person_id,
                 date_of_birth: formattedDate,
                 age: age,
+                same_address_as_primary: child.same_address_as_primary || false,
               };
             });
 

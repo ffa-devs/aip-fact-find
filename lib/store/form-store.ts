@@ -27,6 +27,7 @@ const initialState: FormState = {
     nationality: '',
     marital_status: '',
     telephone: '',
+    linkedin_profile_url: '',
     has_co_applicants: false,
     co_applicants: [],
   },

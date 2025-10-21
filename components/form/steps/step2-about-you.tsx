@@ -13,6 +13,7 @@ import {
   FormMessage,
   FormDescription,
 } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
@@ -66,6 +67,7 @@ export function Step2AboutYou({ onNext }: Step2Props) {
       nationality: step2.nationality || '',
       marital_status: step2.marital_status || undefined,
       telephone: step2.telephone || '',
+      linkedin_profile_url: step2.linkedin_profile_url || '',
       has_co_applicants: step2.has_co_applicants,
       co_applicants: step2.co_applicants?.map(coApp => ({
         ...coApp,
@@ -84,6 +86,7 @@ export function Step2AboutYou({ onNext }: Step2Props) {
       nationality: step2.nationality || '',
       marital_status: step2.marital_status || undefined,
       telephone: step2.telephone || '',
+      linkedin_profile_url: step2.linkedin_profile_url || '',
       has_co_applicants: step2.has_co_applicants,
       co_applicants: step2.co_applicants?.map(coApp => ({
         ...coApp,
@@ -245,6 +248,27 @@ export function Step2AboutYou({ onNext }: Step2Props) {
                 </FormControl>
                 <FormDescription>
                   Only if different from your mobile number
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="linkedin_profile_url"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>LinkedIn Profile URL (Optional)</FormLabel>
+                <FormControl>
+                  <Input
+                    type="url"
+                    placeholder="https://www.linkedin.com/in/your-profile"
+                    {...field}
+                  />
+                </FormControl>
+                <FormDescription>
+                  Your LinkedIn professional profile (optional)
                 </FormDescription>
                 <FormMessage />
               </FormItem>

@@ -34,6 +34,7 @@ export function transformDatabaseToFormStateNew(dbData: any): FormState | null {
         nationality: primaryPerson.nationality || '',
         marital_status: primaryParticipant.marital_status || '',
         telephone: primaryPerson.telephone || '',
+        linkedin_profile_url: primaryPerson.linkedin_profile_url || '',
         has_co_applicants: coParticipants.length > 0,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         co_applicants: coParticipants.map((coParticipant: any) => {
@@ -69,8 +70,8 @@ export function transformDatabaseToFormStateNew(dbData: any): FormState | null {
         has_children: (primaryPerson.person_children?.length || 0) > 0,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         children: (primaryPerson.person_children || []).map((child: any) => ({
-          name: child.name,
-          age: child.age,
+          date_of_birth: child.date_of_birth ? new Date(child.date_of_birth) : new Date(),
+          same_address_as_primary: child.same_address_as_primary || false,
         })),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         co_applicants: coParticipants.map((coParticipant: any) => ({
@@ -89,8 +90,12 @@ export function transformDatabaseToFormStateNew(dbData: any): FormState | null {
           previous_move_in_date: null,
           previous_move_out_date: null,
           tax_country: coParticipant.tax_country || '',
-          has_children: false, // TODO: implement co-applicant children
-          children: [],
+          has_children: (coParticipant.person_children?.length || 0) > 0,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          children: (coParticipant.person_children || []).map((child: any) => ({
+            date_of_birth: child.date_of_birth ? new Date(child.date_of_birth) : new Date(),
+            same_address_as_primary: child.same_address_as_primary || false,
+          })),
         })),
       },
       step4: {

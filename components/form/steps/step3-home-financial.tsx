@@ -24,7 +24,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FormNavigation } from '@/components/form/form-navigation';
 import { NationalityCombobox } from '@/components/ui/nationality-combobox';
 import { CurrencyInput } from '@/components/ui/currency-input';
-import { Plus, X, CalendarIcon } from 'lucide-react';
+import { ChildModal } from '@/components/ui/child-modal';
+import { X, CalendarIcon, Edit2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useState, useEffect, useCallback } from 'react';
@@ -185,9 +186,15 @@ export function Step3HomeFinancial({
     }, 100);
   };
 
-  const addChild = () => {
+  const addChild = (childData: { date_of_birth: Date; same_address_as_primary: boolean }) => {
     const currentChildren = form.getValues('children') || [];
-    form.setValue('children', [...currentChildren, { date_of_birth: undefined }]);
+    form.setValue('children', [...currentChildren, childData]);
+  };
+
+  const updateChild = (index: number, childData: { date_of_birth: Date; same_address_as_primary: boolean }) => {
+    const currentChildren = form.getValues('children') || [];
+    currentChildren[index] = childData;
+    form.setValue('children', [...currentChildren]);
   };
 
   const removeChild = (index: number) => {
@@ -453,71 +460,55 @@ export function Step3HomeFinancial({
               {showChildren && (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-medium">Children Ages</h3>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={addChild}
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add Child
-                    </Button>
+                    <h3 className="text-sm font-medium">Children</h3>
+                    <ChildModal
+                      onSave={addChild}
+                      isCoApplicant={isMultiApplicant}
+                      applicantIndex={applicantIndex}
+                    />
                   </div>
 
-                  {watchedChildren?.map((_, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <FormField
-                        control={form.control}
-                        name={`children.${index}.date_of_birth`}
-                        render={({ field }) => (
-                          <FormItem className="flex-1">
-                            <FormLabel>Child {index + 1} Date of Birth</FormLabel>
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <FormControl>
-                                  <Button
-                                    variant="outline"
-                                    className={cn(
-                                      'w-full pl-3 text-left font-normal',
-                                      !field.value && 'text-muted-foreground'
-                                    )}
-                                  >
-                                    {field.value && field.value instanceof Date && !isNaN(field.value.getTime()) ? (
-                                      format(field.value, 'PPP')
-                                    ) : (
-                                      <span>Select date of birth</span>
-                                    )}
-                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                  </Button>
-                                </FormControl>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar
-                                  mode="single"
-                                  selected={field.value}
-                                  onSelect={field.onChange}
-                                  disabled={(date) =>
-                                    date > new Date() || date < new Date('1990-01-01')
-                                  }
-                                  initialFocus
-                                  captionLayout="dropdown"
-                                />
-                              </PopoverContent>
-                            </Popover>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeChild(index)}
-                        className="mt-6"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
+                  {/* Children List */}
+                  {watchedChildren?.map((child, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div>
+                        <p className="font-medium">
+                          Child {index + 1}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Born: {child.date_of_birth ? format(child.date_of_birth, 'PPP') : 'Not set'}
+                          {isMultiApplicant && applicantIndex > 0 && child.same_address_as_primary && (
+                            <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                              Same address as primary
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <ChildModal
+                          editingChild={{ 
+                            ...child, 
+                            index,
+                            same_address_as_primary: child.same_address_as_primary || false
+                          }}
+                          onSave={(updatedChild) => updateChild(index, updatedChild)}
+                          isCoApplicant={isMultiApplicant}
+                          applicantIndex={applicantIndex}
+                          trigger={
+                            <Button variant="ghost" size="sm">
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                          }
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeChild(index)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>

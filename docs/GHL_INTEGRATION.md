@@ -335,11 +335,13 @@ import { createLeadInGHL } from '@/lib/ghl/service';
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const contactId = await createLeadInGHL(body);
+  const { applicationId, ...step1Data } = body;
+  const result = await createLeadInGHL(step1Data, applicationId);
   
   return NextResponse.json({
     success: true,
-    contactId,
+    contactId: result.contactId,
+    opportunityId: result.opportunityId,
   });
 }
 ```
@@ -353,8 +355,13 @@ Located in `/lib/ghl/service.ts`:
 ### Available Functions
 
 ```typescript
-// Create initial lead
-createLeadInGHL(data: Step1FormData): Promise<string | null>
+// Create initial lead (checks for existing opportunity)
+createLeadInGHL(data: Step1FormData, applicationId: string): Promise<{
+  contactId: string
+  opportunityId: string | null
+  isExisting: boolean
+  existingData?: object
+}>
 
 // Update for each step
 updateStep2InGHL(contactId: string, data): Promise<void>

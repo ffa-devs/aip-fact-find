@@ -28,6 +28,21 @@ export const step2Schema = z.object({
     .refine((val) => !val || val === '' || isValidPhoneNumber(val), {
       message: 'Invalid phone number',
     }),
+  linkedin_profile_url: z
+    .string()
+    .optional()
+    .or(z.literal(''))
+    .refine((val) => {
+      if (!val || val === '') return true;
+      try {
+        const url = new URL(val);
+        return url.hostname === 'www.linkedin.com' || url.hostname === 'linkedin.com';
+      } catch {
+        return false;
+      }
+    }, {
+      message: 'Please enter a valid LinkedIn profile URL',
+    }),
   has_co_applicants: z.boolean(),
   co_applicants: z.array(
     z.object({
@@ -81,6 +96,7 @@ export const step3Schema = z.object({
   children: z.array(
     z.object({
       date_of_birth: z.date({ message: 'Child date of birth is required' }),
+      same_address_as_primary: z.boolean().default(false),
     })
   ).optional(),
 }).refine((data) => {
@@ -95,7 +111,12 @@ export const step3Schema = z.object({
 }).refine((data) => {
   // If has_children is true, all children must have valid dates
   if (data.has_children && data.children) {
-    return data.children.every(child => child.date_of_birth && child.date_of_birth instanceof Date && !isNaN(child.date_of_birth.getTime()));
+    return data.children.every(child => 
+      child.date_of_birth && 
+      child.date_of_birth instanceof Date && 
+      !isNaN(child.date_of_birth.getTime()) &&
+      (child.same_address_as_primary === undefined || typeof child.same_address_as_primary === 'boolean')
+    );
   }
   return true;
 }, {

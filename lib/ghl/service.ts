@@ -7,6 +7,7 @@
 import { ghlClient, type GHLContact } from './client'
 import type { Step1FormData } from '@/lib/validations/form-schemas'
 import { format } from 'date-fns'
+import { supabaseAdmin } from '@/lib/supabase/server'
 
 import pipeline from '@/ghl_pipeline'
 
@@ -23,8 +24,9 @@ function getStageIdByName(stageName: string): string | null {
 /**
  * Create or update contact and opportunity when Step 1 is completed
  * Searches for existing contact by email first, then creates or updates
+ * Checks for existing opportunity in the application before creating a new one
  */
-export async function createLeadInGHL(data: Step1FormData): Promise<{
+export async function createLeadInGHL(data: Step1FormData, applicationId: string): Promise<{
   contactId: string
   opportunityId: string | null
   isExisting: boolean
@@ -104,21 +106,37 @@ export async function createLeadInGHL(data: Step1FormData): Promise<{
   if (contactId) {
     let opportunityId: string | null = null
 
-    // Create opportunity in "New Lead" stage
-    const newLeadStageId = getStageIdByName('New Lead')
+    // Check if an opportunity already exists for this application
+    const { data: existingApp } = await supabaseAdmin
+      .from('applications')
+      .select('ghl_opportunity_id')
+      .eq('id', applicationId)
+      .single()
 
-    if (newLeadStageId) {
-      const oppResult = await ghlClient.createOpportunity({
-        name: `AIP Application - ${data.first_name} ${data.last_name}`,
-        pipelineId: PIPELINE_ID,
-        pipelineStageId: newLeadStageId,
-        status: 'open',
-        contactId: contactId,
-        source: 'AIP Fact Find Form',
-      })
+    if (existingApp?.ghl_opportunity_id) {
+      // Opportunity already exists, use it
+      opportunityId = existingApp.ghl_opportunity_id
+      console.log('✅ Using existing opportunity:', opportunityId)
+    } else {
+      // Create new opportunity in "New Lead" stage
+      const newLeadStageId = getStageIdByName('New Lead')
 
-      if (oppResult) {
-        opportunityId = oppResult.opportunity.id
+      console.log('New Lead Stage ID:', newLeadStageId)
+
+      if (newLeadStageId) {
+        const oppResult = await ghlClient.createOpportunity({
+          name: `AIP Application - ${data.first_name} ${data.last_name}`,
+          pipelineId: PIPELINE_ID,
+          pipelineStageId: newLeadStageId,
+          status: 'open',
+          contactId: contactId,
+          source: 'AIP Fact Find Form',
+        })
+
+        if (oppResult) {
+          opportunityId = oppResult.opportunity.id
+          console.log('✅ New opportunity created:', opportunityId)
+        }
       }
     }
 

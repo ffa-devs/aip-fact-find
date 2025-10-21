@@ -114,7 +114,7 @@ export function Step1LeadCapture({ onNext }: Step1Props) {
         const response = await fetch('/api/gohigh/create-lead', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data),
+          body: JSON.stringify({ ...data, applicationId }),
         });
 
         const result = await response.json();

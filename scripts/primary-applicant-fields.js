@@ -3,6 +3,16 @@
     // Note: first_name, last_name, email, mobile, date_of_birth, nationality, telephone already exist as standard contact fields
     {
       locationId: LOCATION_ID,
+      name: 'LinkedIn Profile URL',
+      description: 'Primary applicant LinkedIn profile URL',
+      showInForms: true,
+      dataType: 'TEXT',
+      fieldKey: `${OBJECT_KEY}.linkedin_profile_url`,
+      objectKey: OBJECT_KEY,
+      parentId: folderIds['AIP Form Contact Data'],
+    },
+    {
+      locationId: LOCATION_ID,
       name: 'Marital Status',
       description: 'Primary applicant marital status',
       showInForms: true,
@@ -447,7 +457,7 @@
       description: 'Home status for Spanish property',
       showInForms: true,
       dataType: 'SINGLE_OPTIONS',
-      fieldKey: `${OBJECT_KEY}.home_status`,
+      fieldKey: `${OBJECT_KEY}.aip_home_status`,
       objectKey: OBJECT_KEY,
       parentId: folderIds['AIP Form Contact Data'],
       options: [
@@ -462,7 +472,7 @@
       description: 'Type of Spanish property',
       showInForms: true,
       dataType: 'SINGLE_OPTIONS',
-      fieldKey: `${OBJECT_KEY}.property_type`,
+      fieldKey: `${OBJECT_KEY}.aip_property_type`,
       objectKey: OBJECT_KEY,
       parentId: folderIds['AIP Form Contact Data'],
       options: [

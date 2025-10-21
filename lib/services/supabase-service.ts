@@ -607,6 +607,7 @@ export async function saveStep3DataNew(
             person_id: primaryParticipant.person_id,
             date_of_birth: formattedDate,
             age: age,
+            same_address_as_primary: child.same_address_as_primary || false,
           };
         });
 
@@ -681,6 +682,7 @@ export async function saveStep3DataNew(
                 person_id: coParticipant.person_id,
                 date_of_birth: formattedDate,
                 age: age,
+                same_address_as_primary: child.same_address_as_primary || false,
               };
             });
 
@@ -1045,6 +1047,7 @@ export function transformDatabaseToFormStateNew(dbData: any): FormState | null {
         nationality: primaryPerson.nationality || '',
         marital_status: primaryParticipant.marital_status || '',
         telephone: primaryPerson.telephone || '',
+        linkedin_profile_url: primaryPerson.linkedin_profile_url || '',
         has_co_applicants: coParticipants.length > 0,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         co_applicants: coParticipants.map((coParticipant: any) => {

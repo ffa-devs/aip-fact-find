@@ -43,11 +43,21 @@ export async function POST(request: Request) {
       );
     }
 
-    // Validate the request body with step 1 schema
-    const validatedData = step1Schema.parse(body);
+    // Extract application ID from request body
+    const { applicationId, ...step1Data } = body;
+    
+    if (!applicationId) {
+      return NextResponse.json(
+        { error: 'applicationId is required' },
+        { status: 400 }
+      );
+    }
+
+    // Validate the step 1 form data
+    const validatedData = step1Schema.parse(step1Data);
 
     // Create contact and opportunity in GHL (or get existing contact)
-    const result = await createLeadInGHL(validatedData);
+    const result = await createLeadInGHL(validatedData, applicationId);
 
     if (!result) {
       return NextResponse.json(

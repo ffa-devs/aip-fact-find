@@ -62,6 +62,7 @@ CREATE TABLE people (
   telephone VARCHAR(20),
   mobile VARCHAR(20) NOT NULL,
   nationality VARCHAR(100),
+  linkedin_profile_url VARCHAR(500),
   
   -- Timestamps
   created_at TIMESTAMPTZ DEFAULT NOW(),

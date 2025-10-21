@@ -46,6 +46,7 @@ export interface Child {
   id?: string;
   applicant_id?: string;
   date_of_birth: Date;
+  same_address_as_primary?: boolean;
 }
 
 export interface EmploymentDetails {
@@ -136,6 +137,7 @@ export interface FormState {
     nationality: string;
     marital_status: MaritalStatus | '';
     telephone: string;
+    linkedin_profile_url: string;
     has_co_applicants: boolean;
     co_applicants: Applicant[];
   };

@@ -237,8 +237,8 @@ class GoHighLevelClient {
         return false;
       }
 
-      const result = await response.json();
-      console.log('✅ Contact updated in GHL:', contactId, result);
+      await response.json();
+      console.log('✅ Contact updated in GHL:', contactId);
       return true;
     } catch (error) {
       console.error('Failed to update GHL contact:', error);
