@@ -305,4 +305,7 @@ CREATE TRIGGER trigger_children_calculate_age
 -- COMMENTS FOR DOCUMENTATION
 -- =====================================================
 
-COMMENT ON MIGRATION IS 'Added all missing form fields to ensure database schema matches application requirements';
+-- Migration completed successfully
+-- Added all missing form fields to ensure database schema matches application requirements
+-- Tables updated: people, applications, employment_details, financial_commitments, person_children
+-- Triggers added for automatic age calculation
