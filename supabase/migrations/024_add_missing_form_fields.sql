@@ -30,6 +30,20 @@ BEGIN
   END IF;
 END $$;
 
+-- =====================================================
+-- 2b. ADD GHL CO-APPLICANT RECORD ID TO APPLICATION_PARTICIPANTS
+-- =====================================================
+
+-- Add GHL co-applicant record ID field for co-applicant participants
+DO $$ 
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name = 'application_participants' AND column_name = 'ghl_co_applicant_record_id') THEN
+    ALTER TABLE application_participants ADD COLUMN ghl_co_applicant_record_id VARCHAR(255);
+    COMMENT ON COLUMN application_participants.ghl_co_applicant_record_id IS 'GoHighLevel co-applicant custom object record ID for CRM integration';
+  END IF;
+END $$;
+
 -- Add move-in date fields to applications table (property-specific dates)
 DO $$ 
 BEGIN
@@ -245,6 +259,9 @@ END $$;
 
 -- Index for GHL opportunity ID
 CREATE INDEX IF NOT EXISTS idx_applications_ghl_opportunity_id ON applications(ghl_opportunity_id);
+
+-- Index for GHL co-applicant record ID
+CREATE INDEX IF NOT EXISTS idx_application_participants_ghl_co_applicant_record_id ON application_participants(ghl_co_applicant_record_id);
 
 -- Indexes for date fields in applications table
 CREATE INDEX IF NOT EXISTS idx_applications_move_in_date ON applications(move_in_date);
