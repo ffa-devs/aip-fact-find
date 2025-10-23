@@ -4,6 +4,27 @@
  * Maps form fields to GHL opportunity custom field IDs for proper data sync
  */
 
+/**
+ * Format children details array into a readable multi-line string
+ */
+function formatChildrenDetails(children: Array<{
+  date_of_birth?: Date | string;
+  same_address_as_primary?: boolean;
+}>): string {
+  if (!children || children.length === 0) {
+    return 'No children';
+  }
+
+  return children.map((child, index) => {
+    const dob = child.date_of_birth ? new Date(child.date_of_birth) : null;
+    const age = dob ? Math.floor((Date.now() - dob.getTime()) / (365.25 * 24 * 60 * 60 * 1000)) : 'Unknown';
+    
+    return `Child ${index + 1}:
+  Date of Birth: ${dob ? dob.toLocaleDateString() : 'Not provided'}
+  Age: ${age}`;
+  }).join('\n\n');
+}
+
 export interface GHLFieldOption {
   key: string;
   label: string;
@@ -398,8 +419,10 @@ export function mapFormDataToCustomFields(data: Record<string, unknown>): Array<
           
         case 'RADIO':
         case 'SINGLE_OPTIONS':
-          // Ensure boolean values are converted to strings for radio fields
-          if (typeof value === 'boolean') {
+          // Special handling for boolean "Has" fields that need Yes/No values
+          if (typeof value === 'boolean' && (key === 'has_children' || key === 'has_co_applicants' || key === 'has_rental_properties')) {
+            fieldValue = value ? 'Yes' : 'No';
+          } else if (typeof value === 'boolean') {
             fieldValue = value.toString();
           }
           break;
@@ -426,7 +449,12 @@ export function mapFormDataToCustomFields(data: Record<string, unknown>): Array<
           
         default:
           // TEXT and LARGE_TEXT - keep as string
-          fieldValue = String(value);
+          // Special handling for children field
+          if (key === 'children' && Array.isArray(value)) {
+            fieldValue = formatChildrenDetails(value);
+          } else {
+            fieldValue = String(value);
+          }
       }
 
       customFields.push({

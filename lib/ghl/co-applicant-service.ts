@@ -14,6 +14,27 @@ import {
 import type { FormState } from '@/lib/types/application';
 
 /**
+ * Format children details array into a readable multi-line string for co-applicants
+ */
+function formatCoApplicantChildrenDetails(children: Array<{
+  date_of_birth?: Date | string;
+  same_address_as_primary?: boolean;
+}>): string {
+  if (!children || children.length === 0) {
+    return 'No children';
+  }
+
+  return children.map((child, index) => {
+    const dob = child.date_of_birth ? new Date(child.date_of_birth) : null;
+    const age = dob ? Math.floor((Date.now() - dob.getTime()) / (365.25 * 24 * 60 * 60 * 1000)) : 'Unknown';
+    
+    return `Child ${index + 1}:
+  Date of Birth: ${dob ? dob.toLocaleDateString() : 'Not provided'}
+  Age: ${age}`;
+  }).join('\n\n');
+}
+
+/**
  * Interface for co-applicant data collected from all form steps
  */
 export interface CoApplicantData {
@@ -158,7 +179,7 @@ function transformCoApplicantDataToGHL(
 
   // Helper function to format boolean as string
   const formatBoolean = (value: boolean | undefined): string | undefined => {
-    return value !== undefined ? (value ? 'yes' : 'no') : undefined;
+    return value !== undefined ? (value ? 'Yes' : 'No') : undefined;
   };
 
   // Personal Information (from step 2)
@@ -220,7 +241,7 @@ function transformCoApplicantDataToGHL(
     properties['custom_objects.aip_co_applicants.has_children'] = formatBoolean(addressInfo.has_children);
   }
   if (addressInfo?.children && addressInfo.children.length > 0) {
-    properties['custom_objects.aip_co_applicants.children'] = JSON.stringify(addressInfo.children);
+    properties['custom_objects.aip_co_applicants.children'] = formatCoApplicantChildrenDetails(addressInfo.children);
   }
 
   // Employment Details (from step 4)
