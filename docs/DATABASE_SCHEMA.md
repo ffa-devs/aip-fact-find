@@ -80,9 +80,6 @@ CREATE TABLE applicants (
   current_address TEXT,
   time_at_current_address_years INTEGER,
   time_at_current_address_months INTEGER,
-  previous_address TEXT,
-  time_at_previous_address_years INTEGER,
-  time_at_previous_address_months INTEGER,
   
   -- Tax & Ownership
   tax_country VARCHAR(100),

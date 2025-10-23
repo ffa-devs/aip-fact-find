@@ -35,9 +35,6 @@ export interface GHLCoApplicantProperties {
   'custom_objects.aip_co_applicants.mortgage_outstanding'?: GHLCurrencyField;
   'custom_objects.aip_co_applicants.mortgage_outstanding_currency'?: string;
   'custom_objects.aip_co_applicants.lender_or_landlord_details'?: string;
-  'custom_objects.aip_co_applicants.previous_address'?: string;
-  'custom_objects.aip_co_applicants.previous_move_in_date'?: string; // Format: YYYY-MM-DD
-  'custom_objects.aip_co_applicants.previous_move_out_date'?: string; // Format: YYYY-MM-DD
   'custom_objects.aip_co_applicants.tax_country'?: string;
   'custom_objects.aip_co_applicants.has_children'?: string; // "yes" or "no"
   'custom_objects.aip_co_applicants.children'?: string; // JSON string of children details
@@ -112,9 +109,6 @@ export const coApplicantFieldMap: Record<string, string> = {
   'mortgage_outstanding': 'custom_objects.aip_co_applicants.mortgage_outstanding',
   'mortgage_outstanding_currency': 'custom_objects.aip_co_applicants.mortgage_outstanding_currency',
   'lender_or_landlord_details': 'custom_objects.aip_co_applicants.lender_or_landlord_details',
-  'previous_address': 'custom_objects.aip_co_applicants.previous_address',
-  'previous_move_in_date': 'custom_objects.aip_co_applicants.previous_move_in_date',
-  'previous_move_out_date': 'custom_objects.aip_co_applicants.previous_move_out_date',
   'tax_country': 'custom_objects.aip_co_applicants.tax_country',
   'has_children': 'custom_objects.aip_co_applicants.has_children',
   'children': 'custom_objects.aip_co_applicants.children',

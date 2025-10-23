@@ -30,9 +30,6 @@ export interface Applicant {
   current_address?: string;
   time_at_current_address_years?: number;
   time_at_current_address_months?: number;
-  previous_address?: string;
-  time_at_previous_address_years?: number;
-  time_at_previous_address_months?: number;
   tax_country?: string;
   homeowner_or_tenant?: HomeownerStatus;
   monthly_mortgage_or_rent?: number;
@@ -155,9 +152,6 @@ export interface FormState {
     mortgage_outstanding: number;
     mortgage_outstanding_currency: string;
     lender_or_landlord_details: string;
-    previous_address: string;
-    previous_move_in_date: Date | null;
-    previous_move_out_date: Date | null;
     tax_country: string;
     has_children: boolean;
     children: Child[];
@@ -173,9 +167,6 @@ export interface FormState {
       mortgage_outstanding: number;
       mortgage_outstanding_currency: string;
       lender_or_landlord_details: string;
-      previous_address: string;
-      previous_move_in_date: Date | null;
-      previous_move_out_date: Date | null;
       tax_country: string;
       has_children: boolean;
       same_children_as_primary?: boolean;

@@ -63,9 +63,6 @@ export function transformDatabaseToFormStateNew(dbData: any): FormState | null {
         mortgage_outstanding: primaryParticipant.mortgage_outstanding || 0,
         mortgage_outstanding_currency: 'EUR', // Default
         lender_or_landlord_details: primaryParticipant.lender_or_landlord_details || '',
-        previous_address: primaryParticipant.previous_address || '',
-        previous_move_in_date: null,
-        previous_move_out_date: null,
         tax_country: primaryParticipant.tax_country || '',
         has_children: (primaryPerson.person_children?.length || 0) > 0,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -86,9 +83,6 @@ export function transformDatabaseToFormStateNew(dbData: any): FormState | null {
           mortgage_outstanding: coParticipant.mortgage_outstanding || 0,
           mortgage_outstanding_currency: 'EUR',
           lender_or_landlord_details: coParticipant.lender_or_landlord_details || '',
-          previous_address: coParticipant.previous_address || '',
-          previous_move_in_date: null,
-          previous_move_out_date: null,
           tax_country: coParticipant.tax_country || '',
           has_children: (coParticipant.person_children?.length || 0) > 0,
           same_children_as_primary: coParticipant.same_children_as_primary || false,

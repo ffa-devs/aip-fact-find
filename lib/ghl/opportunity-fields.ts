@@ -92,24 +92,6 @@ export const opportunityFields: GHLCustomField[] = [
     id: 'HmHv5JnpHzIODBT2qEEh'
   },
   {
-    name: 'Previous Address',
-    dataType: 'TEXT',
-    fieldKey: 'previous_address',
-    id: 'dywIoEUlyE2ZGmysXEfE'
-  },
-  {
-    name: 'Previous Move In Date',
-    dataType: 'DATE',
-    fieldKey: 'previous_move_in_date',
-    id: '7n2xue7WTQClkZhf8jG3'
-  },
-  {
-    name: 'Previous Move Out Date',
-    dataType: 'DATE',
-    fieldKey: 'previous_move_out_date',
-    id: 'xulQheCKPk5o9IJMK22K'
-  },
-  {
     name: 'Tax Country',
     dataType: 'TEXT',
     fieldKey: 'tax_country',

@@ -110,21 +110,6 @@
               "required": false,
               "description": "Lender or landlord contact details"
             },
-            "previous_address": {
-              "type": "string",
-              "required": false,
-              "description": "Previous residential address"
-            },
-            "previous_move_in_date": {
-              "type": "Date",
-              "required": false,
-              "description": "Date moved into previous address"
-            },
-            "previous_move_out_date": {
-              "type": "Date",
-              "required": false,
-              "description": "Date moved out of previous address"
-            },
             "tax_country": {
               "type": "string",
               "required": true,

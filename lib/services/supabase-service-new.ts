@@ -29,9 +29,6 @@ export interface ApplicationParticipant {
   current_address?: string;
   time_at_current_address_years?: number;
   time_at_current_address_months?: number;
-  previous_address?: string;
-  time_at_previous_address_years?: number;
-  time_at_previous_address_months?: number;
   tax_country?: string;
   homeowner_or_tenant?: string;
   monthly_mortgage_or_rent?: number;
@@ -447,9 +444,6 @@ export async function loadApplicationDataNew(applicationId: string): Promise<{
       current_address: p.current_address,
       time_at_current_address_years: p.time_at_current_address_years,
       time_at_current_address_months: p.time_at_current_address_months,
-      previous_address: p.previous_address,
-      time_at_previous_address_years: p.time_at_previous_address_years,
-      time_at_previous_address_months: p.time_at_previous_address_months,
       tax_country: p.tax_country,
       homeowner_or_tenant: p.homeowner_or_tenant,
       monthly_mortgage_or_rent: p.monthly_mortgage_or_rent,

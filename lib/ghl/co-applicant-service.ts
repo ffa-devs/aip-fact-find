@@ -213,15 +213,6 @@ function transformCoApplicantDataToGHL(
   if (addressInfo?.lender_or_landlord_details) {
     properties['custom_objects.aip_co_applicants.lender_or_landlord_details'] = addressInfo.lender_or_landlord_details;
   }
-  if (addressInfo?.previous_address) {
-    properties['custom_objects.aip_co_applicants.previous_address'] = addressInfo.previous_address;
-  }
-  if (addressInfo?.previous_move_in_date) {
-    properties['custom_objects.aip_co_applicants.previous_move_in_date'] = formatDate(addressInfo.previous_move_in_date);
-  }
-  if (addressInfo?.previous_move_out_date) {
-    properties['custom_objects.aip_co_applicants.previous_move_out_date'] = formatDate(addressInfo.previous_move_out_date);
-  }
   if (addressInfo?.tax_country) {
     properties['custom_objects.aip_co_applicants.tax_country'] = addressInfo.tax_country;
   }

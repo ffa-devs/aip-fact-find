@@ -29,9 +29,6 @@ export interface ApplicationParticipant {
   current_address?: string;
   time_at_current_address_years?: number;
   time_at_current_address_months?: number;
-  previous_address?: string;
-  time_at_previous_address_years?: number;
-  time_at_previous_address_months?: number;
   tax_country?: string;
   homeowner_or_tenant?: string;
   monthly_mortgage_or_rent?: number;
@@ -473,9 +470,6 @@ export async function loadApplicationDataNew(applicationId: string): Promise<{
       current_address: p.current_address,
       time_at_current_address_years: p.time_at_current_address_years,
       time_at_current_address_months: p.time_at_current_address_months,
-      previous_address: p.previous_address,
-      time_at_previous_address_years: p.time_at_previous_address_years,
-      time_at_previous_address_months: p.time_at_previous_address_months,
       tax_country: p.tax_country,
       homeowner_or_tenant: p.homeowner_or_tenant,
       monthly_mortgage_or_rent: p.monthly_mortgage_or_rent,
@@ -572,16 +566,6 @@ export async function saveStep3DataNew(
         // Store property-specific date fields in applications table
         move_in_date: (() => {
           const date = step3Data.move_in_date;
-          if (!date) return null;
-          return date instanceof Date ? date.toISOString().split('T')[0] : new Date(date).toISOString().split('T')[0];
-        })(),
-        previous_move_in_date: (() => {
-          const date = step3Data.previous_move_in_date;
-          if (!date) return null;
-          return date instanceof Date ? date.toISOString().split('T')[0] : new Date(date).toISOString().split('T')[0];
-        })(),
-        previous_move_out_date: (() => {
-          const date = step3Data.previous_move_out_date;
           if (!date) return null;
           return date instanceof Date ? date.toISOString().split('T')[0] : new Date(date).toISOString().split('T')[0];
         })(),
@@ -1137,9 +1121,6 @@ export function transformDatabaseToFormStateNew(dbData: any): FormState | null {
         mortgage_outstanding: primaryParticipant.mortgage_outstanding || 0,
         mortgage_outstanding_currency: 'EUR', // Default
         lender_or_landlord_details: primaryParticipant.lender_or_landlord_details || '',
-        previous_address: primaryParticipant.previous_address || '',
-        previous_move_in_date: null,
-        previous_move_out_date: null,
         tax_country: primaryParticipant.tax_country || '',
         has_children: (primaryPerson.person_children?.length || 0) > 0,
         children: primaryPerson.person_children || [],
@@ -1226,7 +1207,6 @@ export async function saveStep3DataForParticipant(
         current_address: step3Data.current_address,
         time_at_current_address_years: timeAtCurrentYears,
         time_at_current_address_months: timeAtCurrentMonths,
-        previous_address: step3Data.previous_address,
         tax_country: step3Data.tax_country,
         homeowner_or_tenant: step3Data.homeowner_or_tenant,
         monthly_mortgage_or_rent: step3Data.monthly_mortgage_or_rent,

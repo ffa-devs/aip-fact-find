@@ -67,9 +67,6 @@ export function Step3HomeFinancial({
         mortgage_outstanding: 0,
         mortgage_outstanding_currency: 'USD',
         lender_or_landlord_details: '',
-        previous_address: '',
-        previous_move_in_date: null,
-        previous_move_out_date: null,
         tax_country: '',
         has_children: false,
         same_children_as_primary: false,
@@ -99,13 +96,6 @@ export function Step3HomeFinancial({
       mortgage_outstanding: currentData.mortgage_outstanding || 0,
       mortgage_outstanding_currency: 'USD',
       lender_or_landlord_details: currentData.lender_or_landlord_details,
-      previous_address: currentData.previous_address,
-      previous_move_in_date: currentData.previous_move_in_date 
-        ? (currentData.previous_move_in_date instanceof Date ? currentData.previous_move_in_date : new Date(currentData.previous_move_in_date))
-        : undefined,
-      previous_move_out_date: currentData.previous_move_out_date 
-        ? (currentData.previous_move_out_date instanceof Date ? currentData.previous_move_out_date : new Date(currentData.previous_move_out_date))
-        : undefined,
       tax_country: currentData.tax_country || step2.nationality || '',
       has_children: currentData.has_children,
       same_children_as_primary: applicantIndex > 0 ? (currentData as { same_children_as_primary?: boolean }).same_children_as_primary || false : false,
@@ -137,13 +127,6 @@ export function Step3HomeFinancial({
       mortgage_outstanding: currentData.mortgage_outstanding || 0,
       mortgage_outstanding_currency: 'USD',
       lender_or_landlord_details: currentData.lender_or_landlord_details,
-      previous_address: currentData.previous_address,
-      previous_move_in_date: currentData.previous_move_in_date 
-        ? (currentData.previous_move_in_date instanceof Date ? currentData.previous_move_in_date : new Date(currentData.previous_move_in_date))
-        : undefined,
-      previous_move_out_date: currentData.previous_move_out_date 
-        ? (currentData.previous_move_out_date instanceof Date ? currentData.previous_move_out_date : new Date(currentData.previous_move_out_date))
-        : undefined,
       tax_country: currentData.tax_country || step2.nationality || '',
       has_children: currentData.has_children,
       children: currentData.children?.map(child => ({
@@ -182,13 +165,6 @@ export function Step3HomeFinancial({
       form.setValue('current_property_value', primaryData.current_property_value || 0);
       form.setValue('mortgage_outstanding', primaryData.mortgage_outstanding || 0);
       form.setValue('lender_or_landlord_details', primaryData.lender_or_landlord_details || '');
-      form.setValue('previous_address', primaryData.previous_address || '');
-      if (primaryData.previous_move_in_date) {
-        form.setValue('previous_move_in_date', primaryData.previous_move_in_date instanceof Date ? primaryData.previous_move_in_date : new Date(primaryData.previous_move_in_date));
-      }
-      if (primaryData.previous_move_out_date) {
-        form.setValue('previous_move_out_date', primaryData.previous_move_out_date instanceof Date ? primaryData.previous_move_out_date : new Date(primaryData.previous_move_out_date));
-      }
       form.setValue('tax_country', primaryData.tax_country || step2.nationality || '');
     }
   }, [sameAddressAsPrimary, isMultiApplicant, applicantIndex, step3, step2.nationality, form]);
