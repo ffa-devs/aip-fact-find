@@ -8,6 +8,12 @@
 import { NextResponse } from 'next/server';
 import { createLeadInGHL } from '@/lib/ghl/service';
 import { step1Schema } from '@/lib/validations/form-schemas';
+import { z } from 'zod';
+
+// Schema for GHL lead creation - step1 data plus optional date_of_birth from step2
+const ghlLeadSchema = step1Schema.extend({
+  date_of_birth: z.date().optional(), // Make date_of_birth optional since it comes from step2
+});
 
 export async function POST(request: Request) {
   try {
@@ -36,11 +42,8 @@ export async function POST(request: Request) {
         );
       }
     } else {
-      console.error('date_of_birth is missing or null');
-      return NextResponse.json(
-        { error: 'date_of_birth is required' },
-        { status: 400 }
-      );
+      // date_of_birth is optional for step1 since it's now in step2
+      console.log('date_of_birth not provided - this is expected if step2 has not been completed yet');
     }
 
     // Extract application ID from request body
@@ -53,8 +56,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Validate the step 1 form data
-    const validatedData = step1Schema.parse(step1Data);
+    // Validate the step 1 form data plus optional date_of_birth
+    const validatedData = ghlLeadSchema.parse(step1Data);
 
     // Create contact and opportunity in GHL (or get existing contact)
     const result = await createLeadInGHL(validatedData, applicationId);

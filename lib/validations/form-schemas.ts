@@ -5,7 +5,6 @@ import { isValidPhoneNumber } from 'libphonenumber-js';
 export const step1Schema = z.object({
   first_name: z.string().min(1, 'First name is required'),
   last_name: z.string().min(1, 'Last name is required'),
-  date_of_birth: z.date({ message: 'Date of birth is required' }),
   email: z.string().email('Invalid email address'),
   mobile: z
     .string()
@@ -17,6 +16,7 @@ export const step1Schema = z.object({
 
 // Step 2: About You
 export const step2Schema = z.object({
+  date_of_birth: z.date({ message: 'Date of birth is required' }),
   nationality: z.string().min(1, 'Nationality is required'),
   marital_status: z.enum(['single', 'married', 'civil_partnership', 'divorced', 'widowed'], {
     message: 'Please select your marital status',

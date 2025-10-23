@@ -14,6 +14,8 @@ import {
   FormDescription,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
@@ -23,10 +25,12 @@ import { PhoneNumberInput } from '@/components/ui/phone-input';
 import { NationalityCombobox } from '@/components/ui/nationality-combobox';
 import { CoApplicantModal } from '@/components/ui/co-applicant-modal';
 
-import { Edit, Trash2 } from 'lucide-react';
+import { Edit, Trash2, CalendarIcon } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { parsePhoneNumber } from 'react-phone-number-input';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 interface Step2Props {
   onNext: () => void;
@@ -46,24 +50,15 @@ export function Step2AboutYou({ onNext }: Step2Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<Step2FormData>({
-    resolver: async (values, context, options) => {
-      // Convert date fields in co_applicants to Date objects if they're strings
-      const processedValues = {
-        ...values,
-        co_applicants: values.co_applicants?.map(coApp => ({
-          ...coApp,
-          date_of_birth: coApp.date_of_birth instanceof Date 
-            ? coApp.date_of_birth 
-            : typeof coApp.date_of_birth === 'string'
-            ? new Date(coApp.date_of_birth)
-            : coApp.date_of_birth,
-        })) || [],
-      };
-      return zodResolver(step2Schema)(processedValues, context, options);
-    },
+    resolver: zodResolver(step2Schema),
     mode: 'onBlur', // Validate on blur for better UX
     reValidateMode: 'onChange', // Re-validate on change
     defaultValues: {
+      date_of_birth: step2.date_of_birth instanceof Date 
+        ? step2.date_of_birth 
+        : typeof step2.date_of_birth === 'string' 
+        ? new Date(step2.date_of_birth)
+        : undefined,
       nationality: step2.nationality || '',
       marital_status: step2.marital_status || undefined,
       telephone: step2.telephone || '',
@@ -83,6 +78,11 @@ export function Step2AboutYou({ onNext }: Step2Props) {
   // Reset form when step2 data changes (e.g., from localStorage or navigation)
   useEffect(() => {
     form.reset({
+      date_of_birth: step2.date_of_birth instanceof Date 
+        ? step2.date_of_birth 
+        : typeof step2.date_of_birth === 'string' 
+        ? new Date(step2.date_of_birth)
+        : undefined,
       nationality: step2.nationality || '',
       marital_status: step2.marital_status || undefined,
       telephone: step2.telephone || '',
@@ -217,6 +217,55 @@ export function Step2AboutYou({ onNext }: Step2Props) {
     <Form {...form}>
       <form className="space-y-6">
         <div className="space-y-4">
+
+          <FormField
+            control={form.control}
+            name="date_of_birth"
+            render={({ field, fieldState }) => (
+              <FormItem className="flex flex-col">
+                <FormLabel>Date of Birth *</FormLabel>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          'w-full pl-3 text-left font-normal',
+                          !field.value && 'text-muted-foreground',
+                          fieldState.error && 'border-destructive focus-visible:ring-destructive/20'
+                        )}
+                      >
+                        {field.value ? (
+                          format(field.value, 'PPP')
+                        ) : (
+                          <span>Pick a date</span>
+                        )}
+                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={field.value}
+                      onSelect={field.onChange}
+                      disabled={(date) =>
+                        date > new Date() || date < new Date('1900-01-01')
+                      }
+                      initialFocus
+                      captionLayout='dropdown'
+                    />
+                  </PopoverContent>
+                </Popover>
+                {field.value && (
+                  <p className="text-sm text-muted-foreground">
+                    You are {new Date().getFullYear() - field.value.getFullYear()} years old
+                  </p>
+                )}
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
           <FormField
             control={form.control}

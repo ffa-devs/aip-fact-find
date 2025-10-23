@@ -26,11 +26,11 @@ export function transformDatabaseToFormStateNew(dbData: any): FormState | null {
       step1: {
         first_name: primaryPerson.first_name || '',
         last_name: primaryPerson.last_name || '',
-        date_of_birth: primaryPerson.date_of_birth ? new Date(primaryPerson.date_of_birth) : null,
         email: primaryPerson.email || '',
         mobile: primaryPerson.mobile || '',
       },
       step2: {
+        date_of_birth: primaryPerson.date_of_birth ? new Date(primaryPerson.date_of_birth) : null,
         nationality: primaryPerson.nationality || '',
         marital_status: primaryParticipant.marital_status || '',
         telephone: primaryPerson.telephone || '',

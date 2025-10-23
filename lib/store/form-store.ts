@@ -19,11 +19,11 @@ const initialState: FormState = {
   step1: {
     first_name: '',
     last_name: '',
-    date_of_birth: null,
     email: '',
     mobile: '',
   },
   step2: {
+    date_of_birth: null,
     nationality: '',
     marital_status: '',
     telephone: '',
@@ -396,7 +396,6 @@ export const useFormStore = create<FormState & FormActions>()(
             const step1Valid = !!(
               state.step1.first_name &&
               state.step1.last_name &&
-              state.step1.date_of_birth &&
               state.step1.email &&
               state.step1.mobile
             );
@@ -405,6 +404,7 @@ export const useFormStore = create<FormState & FormActions>()(
             
           case 2:
             const step2Valid = !!(
+              state.step2.date_of_birth &&
               state.step2.nationality &&
               state.step2.marital_status
             );

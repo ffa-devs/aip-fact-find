@@ -10,6 +10,11 @@ import { format } from 'date-fns'
 import { supabaseAdmin } from '@/lib/supabase/server'
 import { mapFormDataToCustomFields } from './opportunity-fields'
 
+// Type for GHL lead creation that combines step1 data with optional date_of_birth from step2
+type GHLLeadData = Step1FormData & {
+  date_of_birth?: Date | null;
+};
+
 import pipeline from '@/ghl_pipeline'
 
 const PIPELINE_ID = pipeline.id
@@ -27,7 +32,7 @@ function getStageIdByName(stageName: string): string | null {
  * Searches for existing contact by email first, then creates or updates
  * Checks for existing opportunity in the application before creating a new one
  */
-export async function createLeadInGHL(data: Step1FormData, applicationId: string): Promise<{
+export async function createLeadInGHL(data: GHLLeadData, applicationId: string): Promise<{
   contactId: string
   opportunityId: string | null
   isExisting: boolean

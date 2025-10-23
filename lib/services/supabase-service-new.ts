@@ -26,7 +26,6 @@ export interface ApplicationParticipant {
   participant_role: 'primary' | 'co-applicant';
   participant_order: number;
   marital_status?: string;
-  age?: number;
   current_address?: string;
   time_at_current_address_years?: number;
   time_at_current_address_months?: number;
@@ -53,7 +52,7 @@ export async function findOrCreatePerson(personData: {
   email: string;
   first_name: string;
   last_name: string;
-  date_of_birth: Date;
+  date_of_birth?: Date | null;
   telephone?: string;
   mobile: string;
   nationality?: string;
@@ -82,7 +81,7 @@ export async function findOrCreatePerson(personData: {
         .update({
           first_name: personData.first_name,
           last_name: personData.last_name,
-          date_of_birth: personData.date_of_birth.toISOString().split('T')[0],
+          date_of_birth: personData.date_of_birth ? personData.date_of_birth.toISOString().split('T')[0] : null,
           telephone: personData.telephone,
           mobile: personData.mobile,
           nationality: personData.nationality,
@@ -107,7 +106,7 @@ export async function findOrCreatePerson(personData: {
         email: personData.email.toLowerCase(),
         first_name: personData.first_name,
         last_name: personData.last_name,
-        date_of_birth: personData.date_of_birth.toISOString().split('T')[0],
+        date_of_birth: personData.date_of_birth ? personData.date_of_birth.toISOString().split('T')[0] : null,
         telephone: personData.telephone,
         mobile: personData.mobile,
         nationality: personData.nationality
@@ -121,7 +120,7 @@ export async function findOrCreatePerson(personData: {
         email: personData.email.toLowerCase(),
         first_name: personData.first_name,
         last_name: personData.last_name,
-        date_of_birth: personData.date_of_birth.toISOString().split('T')[0],
+        date_of_birth: personData.date_of_birth ? personData.date_of_birth.toISOString().split('T')[0] : null,
         telephone: personData.telephone,
         mobile: personData.mobile,
         nationality: personData.nationality
@@ -224,17 +223,16 @@ export async function saveStep1DataNew(
   try {
     console.log('💾 Saving Step 1 data with new schema for application:', applicationId);
 
-    if (!step1Data.email || !step1Data.first_name || !step1Data.last_name || !step1Data.date_of_birth) {
+    if (!step1Data.email || !step1Data.first_name || !step1Data.last_name) {
       return { success: false, error: 'Missing required fields' };
     }
 
-    // 1. Find or create person (Step 1 only has basic info)
+    // 1. Find or create person (Step 1 only has basic contact info)
     const personResult = await findOrCreatePerson({
       email: step1Data.email,
       first_name: step1Data.first_name,
       last_name: step1Data.last_name,
-      date_of_birth: step1Data.date_of_birth,
-      mobile: step1Data.mobile
+      mobile: step1Data.mobile,
     });
 
     if (!personResult.success || !personResult.person) {
@@ -349,7 +347,6 @@ export async function saveStep2DataNew(
             i + 2, // Start from 2 (after primary)
             {
               marital_status: coApplicant.marital_status,
-              age: coApplicant.age,
               employment_status: coApplicant.employment_status
             }
           );

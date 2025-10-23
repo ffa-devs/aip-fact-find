@@ -127,13 +127,13 @@ export interface FormState {
   step1: {
     first_name: string;
     last_name: string;
-    date_of_birth: Date | null;
     email: string;
     mobile: string;
   };
   
   // Step 2: About You
   step2: {
+    date_of_birth: Date | null;
     nationality: string;
     marital_status: MaritalStatus | '';
     telephone: string;

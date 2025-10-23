@@ -164,6 +164,79 @@ export function Step3HomeFinancial({
     }
   }, [step2.nationality, form]);
 
+  // Auto-fill address fields when "same address as primary" is checked for co-applicants
+  const sameAddressAsPrimary = form.watch('same_address_as_primary');
+  useEffect(() => {
+    if (isMultiApplicant && applicantIndex > 0 && sameAddressAsPrimary) {
+      // Fill with primary applicant's data (step3 main data)
+      const primaryData = step3;
+      
+      form.setValue('current_address', primaryData.current_address || '');
+      if (primaryData.move_in_date) {
+        form.setValue('move_in_date', primaryData.move_in_date instanceof Date ? primaryData.move_in_date : new Date(primaryData.move_in_date));
+      }
+      if (primaryData.homeowner_or_tenant) {
+        form.setValue('homeowner_or_tenant', primaryData.homeowner_or_tenant as 'homeowner' | 'tenant');
+      }
+      form.setValue('monthly_mortgage_or_rent', primaryData.monthly_mortgage_or_rent || 0);
+      form.setValue('current_property_value', primaryData.current_property_value || 0);
+      form.setValue('mortgage_outstanding', primaryData.mortgage_outstanding || 0);
+      form.setValue('lender_or_landlord_details', primaryData.lender_or_landlord_details || '');
+      form.setValue('previous_address', primaryData.previous_address || '');
+      if (primaryData.previous_move_in_date) {
+        form.setValue('previous_move_in_date', primaryData.previous_move_in_date instanceof Date ? primaryData.previous_move_in_date : new Date(primaryData.previous_move_in_date));
+      }
+      if (primaryData.previous_move_out_date) {
+        form.setValue('previous_move_out_date', primaryData.previous_move_out_date instanceof Date ? primaryData.previous_move_out_date : new Date(primaryData.previous_move_out_date));
+      }
+      form.setValue('tax_country', primaryData.tax_country || step2.nationality || '');
+    }
+  }, [sameAddressAsPrimary, isMultiApplicant, applicantIndex, step3, step2.nationality, form]);
+
+  // Initial auto-fill on component mount if already marked as same address
+  useEffect(() => {
+    if (isMultiApplicant && applicantIndex > 0) {
+      const currentData = getCurrentApplicantData();
+      if (currentData.same_address_as_primary && step3.current_address) {
+        // Trigger the auto-fill by setting the form value (which will trigger the watch effect above)
+        form.setValue('same_address_as_primary', true);
+      }
+    }
+  }, [isMultiApplicant, applicantIndex, getCurrentApplicantData, step3.current_address, form]);
+
+  // Auto-fill children when "same children as primary" is checked for co-applicants
+  const sameChildrenAsPrimary = form.watch('same_children_as_primary');
+  useEffect(() => {
+    if (isMultiApplicant && applicantIndex > 0 && sameChildrenAsPrimary) {
+      // Fill with primary applicant's children data
+      const primaryChildren = step3.children || [];
+      
+      form.setValue('has_children', primaryChildren.length > 0);
+      const validChildren = primaryChildren
+        .filter(child => child.date_of_birth) // Only include children with valid dates
+        .map(child => ({
+          date_of_birth: child.date_of_birth instanceof Date 
+            ? child.date_of_birth 
+            : new Date(child.date_of_birth!), // Non-null assertion since we filtered above
+          same_address_as_primary: child.same_address_as_primary
+        }));
+      form.setValue('children', validChildren);
+      
+      setShowChildren(primaryChildren.length > 0);
+    }
+  }, [sameChildrenAsPrimary, isMultiApplicant, applicantIndex, step3.children, form]);
+
+  // Initial auto-fill children on component mount if already marked as same children
+  useEffect(() => {
+    if (isMultiApplicant && applicantIndex > 0) {
+      const currentData = getCurrentApplicantData();
+      if ((currentData as { same_children_as_primary?: boolean }).same_children_as_primary && (step3.children?.length ?? 0) > 0) {
+        // Trigger the auto-fill by setting the form value
+        form.setValue('same_children_as_primary', true);
+      }
+    }
+  }, [isMultiApplicant, applicantIndex, getCurrentApplicantData, step3.children, form]);
+
   const onSubmit = async (data: Step3Data) => {
     setIsSubmitting(true);
     try {
@@ -267,19 +340,8 @@ export function Step3HomeFinancial({
                           onCheckedChange={(checked) => {
                             field.onChange(checked);
                             if (checked) {
-                              // Prefill with primary applicant's address data
-                              const primaryData = step3;
-                              form.setValue('current_address', primaryData.current_address || '');
-                              if (primaryData.move_in_date) {
-                                form.setValue('move_in_date', primaryData.move_in_date instanceof Date ? primaryData.move_in_date : new Date(primaryData.move_in_date));
-                              }
-                              form.setValue('previous_address', primaryData.previous_address || '');
-                              if (primaryData.previous_move_in_date) {
-                                form.setValue('previous_move_in_date', primaryData.previous_move_in_date instanceof Date ? primaryData.previous_move_in_date : new Date(primaryData.previous_move_in_date));
-                              }
-                              if (primaryData.previous_move_out_date) {
-                                form.setValue('previous_move_out_date', primaryData.previous_move_out_date instanceof Date ? primaryData.previous_move_out_date : new Date(primaryData.previous_move_out_date));
-                              }
+                              // Trigger immediate prefill with primary applicant's data
+                              // Note: The useEffect will handle the actual prefilling
                             }
                           }}
                         />

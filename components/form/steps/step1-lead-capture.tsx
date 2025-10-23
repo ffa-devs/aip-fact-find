@@ -13,16 +13,10 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Button } from '@/components/ui/button';
 import { PhoneNumberInput } from '@/components/ui/phone-input';
 import { FormNavigation } from '@/components/form/form-navigation';
 import { updateApplicationWithGhlId } from '@/lib/services/api-service';
 
-import { CalendarIcon } from 'lucide-react';
-import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useState, useEffect } from 'react';
 
@@ -33,6 +27,7 @@ interface Step1Props {
 export function Step1LeadCapture({ onNext }: Step1Props) {
   const { 
     step1, 
+    step2,
     updateStep1, 
     setGhlContactId, 
     setGhlOpportunityId, 
@@ -45,26 +40,12 @@ export function Step1LeadCapture({ onNext }: Step1Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<Step1FormData>({
-    resolver: async (values, context, options) => {
-      // Convert date_of_birth to Date if it's a string
-      const processedValues = {
-        ...values,
-        date_of_birth: values.date_of_birth instanceof Date 
-          ? values.date_of_birth 
-          : typeof values.date_of_birth === 'string'
-          ? new Date(values.date_of_birth)
-          : values.date_of_birth,
-      };
-      return zodResolver(step1Schema)(processedValues, context, options);
-    },
+    resolver: zodResolver(step1Schema),
     mode: 'onBlur', // Validate on blur
     reValidateMode: 'onChange', // Re-validate on change after first validation
     defaultValues: {
       first_name: step1.first_name,
       last_name: step1.last_name,
-      date_of_birth: step1.date_of_birth 
-        ? (step1.date_of_birth instanceof Date ? step1.date_of_birth : new Date(step1.date_of_birth))
-        : undefined,
       email: step1.email,
       mobile: step1.mobile,
     },
@@ -75,9 +56,6 @@ export function Step1LeadCapture({ onNext }: Step1Props) {
     form.reset({
       first_name: step1.first_name,
       last_name: step1.last_name,
-      date_of_birth: step1.date_of_birth 
-        ? (step1.date_of_birth instanceof Date ? step1.date_of_birth : new Date(step1.date_of_birth))
-        : undefined,
       email: step1.email,
       mobile: step1.mobile,
     });
@@ -113,10 +91,17 @@ export function Step1LeadCapture({ onNext }: Step1Props) {
       
       // Always sync with GHL (create or update contact)
       try {
+        // Combine step1 data with date_of_birth from step2 for GHL sync
+        const ghlData = {
+          ...data,
+          date_of_birth: step2.date_of_birth, // Get date_of_birth from step2
+          applicationId
+        };
+
         const response = await fetch('/api/gohigh/create-lead', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...data, applicationId }),
+          body: JSON.stringify(ghlData),
         });
 
         const result = await response.json();
@@ -180,11 +165,6 @@ export function Step1LeadCapture({ onNext }: Step1Props) {
               form.setValue('mobile', existingData.mobile);
               updatedData.mobile = existingData.mobile;
             }
-            if (existingData.date_of_birth) {
-              const dob = new Date(existingData.date_of_birth);
-              form.setValue('date_of_birth', dob);
-              updatedData.date_of_birth = dob;
-            }
             
             // Update with merged data
             await updateStep1(updatedData);
@@ -242,26 +222,6 @@ export function Step1LeadCapture({ onNext }: Step1Props) {
     }
   };
 
-  const calculateAge = (date: Date | string | null | undefined) => {
-    if (!date) return 0;
-    
-    // Convert to Date if it's a string
-    const dateObj = date instanceof Date ? date : new Date(date);
-    
-    // Check if valid date
-    if (isNaN(dateObj.getTime())) return 0;
-    
-    const today = new Date();
-    let age = today.getFullYear() - dateObj.getFullYear();
-    const monthDiff = today.getMonth() - dateObj.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dateObj.getDate())) {
-      age--;
-    }
-    return age;
-  };
-
-  const selectedDate = form.watch('date_of_birth');
-
   return (
     <Form {...form}>
       <form className="space-y-6">
@@ -296,55 +256,6 @@ export function Step1LeadCapture({ onNext }: Step1Props) {
               )}
             />
           </div>
-
-          <FormField
-            control={form.control}
-            name="date_of_birth"
-            render={({ field, fieldState }) => (
-              <FormItem className="flex flex-col">
-                <FormLabel>Date of Birth *</FormLabel>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <FormControl>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          'w-full pl-3 text-left font-normal',
-                          !field.value && 'text-muted-foreground',
-                          fieldState.error && 'border-destructive focus-visible:ring-destructive/20'
-                        )}
-                      >
-                        {field.value ? (
-                          format(field.value, 'PPP')
-                        ) : (
-                          <span>Pick a date</span>
-                        )}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={field.value}
-                      onSelect={field.onChange}
-                      disabled={(date) =>
-                        date > new Date() || date < new Date('1900-01-01')
-                      }
-                      initialFocus
-                      captionLayout='dropdown'
-                    />
-                  </PopoverContent>
-                </Popover>
-                {selectedDate && (
-                  <p className="text-sm text-muted-foreground">
-                    You are {calculateAge(selectedDate)} years old
-                  </p>
-                )}
-                <FormMessage />
-              </FormItem>
-            )}
-          />
 
           <FormField
             control={form.control}

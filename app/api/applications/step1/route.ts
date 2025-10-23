@@ -15,12 +15,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Convert date_of_birth to Date object if it's a string
+    // Process step1Data - note that date_of_birth is now in step2
     const processedStep1Data: FormState['step1'] = {
-      ...step1Data,
-      date_of_birth: step1Data.date_of_birth 
-        ? new Date(step1Data.date_of_birth) 
-        : null
+      first_name: step1Data.first_name || '',
+      last_name: step1Data.last_name || '',
+      email: step1Data.email || '',
+      mobile: step1Data.mobile || '',
     };
 
     // Use the new Supabase service function

@@ -15,9 +15,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Convert date fields in co_applicants to Date objects if they're strings
+    // Convert date fields to Date objects if they're strings
     const processedStep2Data: FormState['step2'] = {
       ...step2Data,
+      date_of_birth: step2Data.date_of_birth 
+        ? new Date(step2Data.date_of_birth as string | number | Date) 
+        : null,
       co_applicants: step2Data.co_applicants?.map((coApp: Record<string, unknown>) => ({
         ...coApp,
         date_of_birth: coApp.date_of_birth ? new Date(coApp.date_of_birth as string | number | Date) : null

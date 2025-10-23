@@ -92,7 +92,7 @@ export function Step6SpanishProperty({ onNext }: Step6Props) {
       await updateStep6(formData);
 
       // Complete application in GHL if contact and opportunity exist
-      const { ghlContactId, ghlOpportunityId } = useFormStore.getState();
+      const { ghlContactId, ghlOpportunityId, applicationId } = useFormStore.getState();
       if (ghlContactId && ghlOpportunityId) {
         try {
           // Flatten and map data for GHL final submission
@@ -124,12 +124,47 @@ export function Step6SpanishProperty({ onNext }: Step6Props) {
           } else {
             console.log('✅ Application completed successfully in GHL');
           }
+
+          // Create co-applicant records in GHL if any exist
+          const formState = useFormStore.getState();
+          if (formState.step2.co_applicants && formState.step2.co_applicants.length > 0 && applicationId) {
+            console.log('👥 Creating co-applicant records in GoHighLevel...');
+            
+            try {
+              const coApplicantResponse = await fetch('/api/gohigh/create-co-applicants', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  applicationId,
+                  formState,
+                  contactId: ghlContactId
+                }),
+              });
+
+              const coApplicantResult = await coApplicantResponse.json();
+
+              if (coApplicantResponse.ok && coApplicantResult.success) {
+                console.log(`✅ Successfully created ${coApplicantResult.created} co-applicant records`);
+                toast.success(`Application and ${coApplicantResult.created} co-applicant record(s) submitted successfully!`);
+              } else {
+                console.error('❌ Co-applicant records failed:', coApplicantResult.errors || coApplicantResult.error);
+                toast.warning('Application submitted, but some co-applicant records may need manual review');
+              }
+            } catch (coApplicantError) {
+              console.error('❌ Co-applicant record creation failed:', coApplicantError);
+              toast.warning('Application submitted, but co-applicant records may need manual review');
+            }
+          } else {
+            toast.success('Application submitted successfully!');
+          }
+
         } catch (error) {
           console.error('Error completing application in GHL:', error);
         }
+      } else {
+        toast.success('Application submitted successfully!');
       }
-
-      toast.success('Application submitted successfully!');
+      
       onNext();
     } catch (error) {
       console.error('Error saving Step 6 data:', error);

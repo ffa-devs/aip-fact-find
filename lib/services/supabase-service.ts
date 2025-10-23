@@ -26,7 +26,6 @@ export interface ApplicationParticipant {
   participant_role: 'primary' | 'co-applicant';
   participant_order: number;
   marital_status?: string;
-  age?: number;
   current_address?: string;
   time_at_current_address_years?: number;
   time_at_current_address_months?: number;
@@ -53,7 +52,7 @@ export async function findOrCreatePerson(personData: {
   email: string;
   first_name: string;
   last_name: string;
-  date_of_birth: Date;
+  date_of_birth?: Date | null;
   telephone?: string;
   mobile: string;
   nationality?: string;
@@ -75,7 +74,7 @@ export async function findOrCreatePerson(personData: {
       return age;
     };
 
-    const age = calculateAge(personData.date_of_birth);
+    const age = personData.date_of_birth ? calculateAge(personData.date_of_birth) : null;
 
     // First try to find existing person
     const { data: existingPerson, error: findError } = await supabase
@@ -92,19 +91,25 @@ export async function findOrCreatePerson(personData: {
     if (existingPerson) {
       console.log('✅ Found existing person:', existingPerson.id);
       
-      // Update person data if needed (keep most recent info)
+      // Update person data if needed (keep most recent info, excluding date_of_birth which is handled in Step 2)
+      const updateData: Record<string, string | number | null> = {
+        first_name: personData.first_name,
+        last_name: personData.last_name,
+        telephone: personData.telephone || null,
+        mobile: personData.mobile,
+        nationality: personData.nationality || null,
+        updated_at: new Date().toISOString()
+      };
+
+      // Only include date_of_birth if it's provided (for backwards compatibility)
+      if (personData.date_of_birth) {
+        updateData.date_of_birth = personData.date_of_birth.toISOString().split('T')[0];
+        updateData.age = age;
+      }
+
       const { data: updatedPerson, error: updateError } = await supabase
         .from('people')
-        .update({
-          first_name: personData.first_name,
-          last_name: personData.last_name,
-          date_of_birth: personData.date_of_birth.toISOString().split('T')[0],
-          age: age, // Calculate and save age
-          telephone: personData.telephone,
-          mobile: personData.mobile,
-          nationality: personData.nationality,
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', existingPerson.id)
         .select()
         .single();
@@ -117,14 +122,14 @@ export async function findOrCreatePerson(personData: {
       return { success: true, person: updatedPerson };
     }
 
-    // Create new person
+    // Create new person (date_of_birth is now nullable)
     const { data: newPerson, error: createError } = await supabase
       .from('people')
       .insert({
         email: personData.email.toLowerCase(),
         first_name: personData.first_name,
         last_name: personData.last_name,
-        date_of_birth: personData.date_of_birth.toISOString().split('T')[0],
+        date_of_birth: personData.date_of_birth ? personData.date_of_birth.toISOString().split('T')[0] : null,
         age: age, // Calculate and save age
         telephone: personData.telephone,
         mobile: personData.mobile,
@@ -139,7 +144,7 @@ export async function findOrCreatePerson(personData: {
         email: personData.email.toLowerCase(),
         first_name: personData.first_name,
         last_name: personData.last_name,
-        date_of_birth: personData.date_of_birth.toISOString().split('T')[0],
+        date_of_birth: personData.date_of_birth ? personData.date_of_birth.toISOString().split('T')[0] : null,
         age: age,
         telephone: personData.telephone,
         mobile: personData.mobile,
@@ -243,17 +248,16 @@ export async function saveStep1DataNew(
   try {
     console.log('💾 Saving Step 1 data with new schema for application:', applicationId);
 
-    if (!step1Data.email || !step1Data.first_name || !step1Data.last_name || !step1Data.date_of_birth) {
+    if (!step1Data.email || !step1Data.first_name || !step1Data.last_name) {
       return { success: false, error: 'Missing required fields' };
     }
 
-    // 1. Find or create person (Step 1 only has basic info)
+    // 1. Find or create person (Step 1 only has basic contact info)
     const personResult = await findOrCreatePerson({
       email: step1Data.email,
       first_name: step1Data.first_name,
       last_name: step1Data.last_name,
-      date_of_birth: step1Data.date_of_birth,
-      mobile: step1Data.mobile
+      mobile: step1Data.mobile,
     });
 
     if (!personResult.success || !personResult.person) {
@@ -305,10 +309,11 @@ export async function saveStep2DataNew(
       return { success: false, error: 'Primary participant not found' };
     }
 
-    // Update person with nationality, telephone, and LinkedIn profile
+    // Update person with date_of_birth, nationality, telephone, and LinkedIn profile
     const { error: personUpdateError } = await supabase
       .from('people')
       .update({
+        date_of_birth: step2Data.date_of_birth ? step2Data.date_of_birth.toISOString().split('T')[0] : null,
         nationality: step2Data.nationality,
         telephone: step2Data.telephone,
         linkedin_profile_url: step2Data.linkedin_profile_url || null,
@@ -559,11 +564,27 @@ export async function saveStep3DataNew(
   try {
     console.log('💾 Saving Step 3 data for application:', applicationId);
     
-    // Update current step (without move-in date fields until migration is created)
+    // Update current step
     const { error: stepError } = await supabase
       .from('applications')
       .update({ 
         current_step: 3,
+        // Store property-specific date fields in applications table
+        move_in_date: (() => {
+          const date = step3Data.move_in_date;
+          if (!date) return null;
+          return date instanceof Date ? date.toISOString().split('T')[0] : new Date(date).toISOString().split('T')[0];
+        })(),
+        previous_move_in_date: (() => {
+          const date = step3Data.previous_move_in_date;
+          if (!date) return null;
+          return date instanceof Date ? date.toISOString().split('T')[0] : new Date(date).toISOString().split('T')[0];
+        })(),
+        previous_move_out_date: (() => {
+          const date = step3Data.previous_move_out_date;
+          if (!date) return null;
+          return date instanceof Date ? date.toISOString().split('T')[0] : new Date(date).toISOString().split('T')[0];
+        })(),
         updated_at: new Date().toISOString()
       })
       .eq('id', applicationId);
@@ -573,7 +594,7 @@ export async function saveStep3DataNew(
       return { success: false, error: stepError.message };
     }
 
-    // Update primary applicant participant data
+    // Update primary applicant participant data (without date fields)
     const { error: primaryError } = await supabase
       .from('application_participants')
       .update({
@@ -1079,11 +1100,11 @@ export function transformDatabaseToFormStateNew(dbData: any): FormState | null {
       step1: {
         first_name: primaryPerson.first_name || '',
         last_name: primaryPerson.last_name || '',
-        date_of_birth: primaryPerson.date_of_birth ? new Date(primaryPerson.date_of_birth) : null,
         email: primaryPerson.email || '',
         mobile: primaryPerson.mobile || '',
       },
       step2: {
+        date_of_birth: primaryPerson.date_of_birth ? new Date(primaryPerson.date_of_birth) : null,
         nationality: primaryPerson.nationality || '',
         marital_status: primaryParticipant.marital_status || '',
         telephone: primaryPerson.telephone || '',
