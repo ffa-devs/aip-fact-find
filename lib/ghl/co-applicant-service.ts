@@ -6,7 +6,6 @@
 
 import { supabaseAdmin as supabase } from '@/lib/supabase/server';
 import { 
-  GHLCoApplicantCustomObject, 
   GHLCoApplicantProperties, 
   GHLCoApplicantResponse,
   GHLCurrencyField
@@ -72,26 +71,26 @@ export async function createCoApplicantRecord(
       return { success: false, error: 'No valid GHL token found' };
     }
 
-    // Transform form data to GHL co-applicant properties
+    // Transform form data to GHL co-applicant properties with all fields
     const properties = transformCoApplicantDataToGHL(coApplicantData);
 
-    // Create the custom object payload
-    const customObjectPayload: GHLCoApplicantCustomObject = {
+    console.log('🔄 Sending complete co-applicant data to GHL with all fields...');
+
+    // Create the custom object payload with all available data
+    const customObjectPayload = {
       locationId: applicationData.locationId,
-      owner: [applicationData.contactId],
-      followers: [applicationData.contactId],
       properties
     };
 
     console.log('🔄 Sending co-applicant data to GHL:', {
-      objectKey: 'aip_co_applicants',
-      owner: customObjectPayload.owner,
+      objectKey: 'custom_objects.aip_co_applicants',
       propertiesCount: Object.keys(properties).length,
+      fieldNames: Object.keys(properties),
       properties
     });
 
     // Make API call to create custom object record
-    const response = await fetch('https://services.leadconnectorhq.com/objects/aip_co_applicants/records', {
+    const response = await fetch('https://services.leadconnectorhq.com/objects/custom_objects.aip_co_applicants/records', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${tokenData.access_token}`,
@@ -106,8 +105,19 @@ export async function createCoApplicantRecord(
       console.error('❌ GHL co-applicant record creation failed:', {
         status: response.status,
         statusText: response.statusText,
-        error: errorText
+        error: errorText,
+        payload: customObjectPayload,
+        url: 'https://services.leadconnectorhq.com/objects/custom_objects.aip_co_applicants/records'
       });
+      
+      // Try to parse the error response for more details
+      try {
+        const errorData = JSON.parse(errorText);
+        console.error('📋 Parsed error details:', errorData);
+      } catch {
+        console.error('📋 Raw error text:', errorText);
+      }
+      
       return { 
         success: false, 
         error: `GHL API error: ${response.status} ${response.statusText} - ${errorText}` 
@@ -181,137 +191,137 @@ function transformCoApplicantDataToGHL(
 
   // Personal Information (from step 2)
   if (personalInfo.first_name) {
-    properties['custom_objects.aip_co_applicants.first_name'] = personalInfo.first_name;
+    properties['first_name'] = personalInfo.first_name;
   }
   if (personalInfo.last_name) {
-    properties['custom_objects.aip_co_applicants.last_name'] = personalInfo.last_name;
+    properties['last_name'] = personalInfo.last_name;
   }
   if (personalInfo.email) {
-    properties['custom_objects.aip_co_applicants.email_address'] = personalInfo.email;
+    properties['email_address'] = personalInfo.email;
   }
   if (personalInfo.mobile) {
-    properties['custom_objects.aip_co_applicants.mobile'] = personalInfo.mobile;
+    properties['mobile'] = personalInfo.mobile;
   }
   if (personalInfo.date_of_birth) {
-    properties['custom_objects.aip_co_applicants.date_of_birth'] = formatDate(personalInfo.date_of_birth);
+    properties['date_of_birth'] = formatDate(personalInfo.date_of_birth);
   }
   if (personalInfo.nationality) {
-    properties['custom_objects.aip_co_applicants.nationality'] = personalInfo.nationality;
+    properties['nationality'] = personalInfo.nationality;
   }
   if (personalInfo.marital_status) {
-    properties['custom_objects.aip_co_applicants.marital_status'] = personalInfo.marital_status;
+    properties['marital_status'] = personalInfo.marital_status;
   }
   // TODO: Add relationship_to_primary when it's available in the form
   // if (personalInfo.relationship_to_primary) {
-  //   properties['custom_objects.aip_co_applicants.relationship_to_main_applicant'] = personalInfo.relationship_to_primary;
+  //   properties['relationship_to_main_applicant'] = personalInfo.relationship_to_primary;
   // }
 
   // Address & Living Situation (from step 3)
   if (addressInfo?.same_address_as_primary !== undefined) {
-    properties['custom_objects.aip_co_applicants.same_address_as_primary'] = formatBoolean(addressInfo.same_address_as_primary);
+    properties['same_address_as_primary'] = formatBoolean(addressInfo.same_address_as_primary);
   }
   if (addressInfo?.current_address) {
-    properties['custom_objects.aip_co_applicants.current_address'] = addressInfo.current_address;
+    properties['current_address'] = addressInfo.current_address;
   }
   if (addressInfo?.move_in_date) {
-    properties['custom_objects.aip_co_applicants.move_in_date'] = formatDate(addressInfo.move_in_date);
+    properties['move_in_date'] = formatDate(addressInfo.move_in_date);
   }
   if (addressInfo?.homeowner_or_tenant) {
-    properties['custom_objects.aip_co_applicants.homeowner_or_tenant'] = addressInfo.homeowner_or_tenant;
+    properties['homeowner_or_tenant'] = addressInfo.homeowner_or_tenant;
   }
   if (addressInfo?.monthly_mortgage_or_rent !== undefined) {
-    properties['custom_objects.aip_co_applicants.monthly_mortgage_or_rent'] = formatCurrency(addressInfo.monthly_mortgage_or_rent);
+    properties['monthly_mortgage_or_rent'] = formatCurrency(addressInfo.monthly_mortgage_or_rent);
   }
   if (addressInfo?.current_property_value !== undefined) {
-    properties['custom_objects.aip_co_applicants.current_property_value'] = formatCurrency(addressInfo.current_property_value);
+    properties['current_property_value'] = formatCurrency(addressInfo.current_property_value);
   }
   if (addressInfo?.mortgage_outstanding !== undefined) {
-    properties['custom_objects.aip_co_applicants.mortgage_outstanding'] = formatCurrency(addressInfo.mortgage_outstanding);
+    properties['mortgage_outstanding'] = formatCurrency(addressInfo.mortgage_outstanding);
   }
   if (addressInfo?.lender_or_landlord_details) {
-    properties['custom_objects.aip_co_applicants.lender_or_landlord_details'] = addressInfo.lender_or_landlord_details;
+    properties['lender_or_landlord_details'] = addressInfo.lender_or_landlord_details;
   }
   if (addressInfo?.tax_country) {
-    properties['custom_objects.aip_co_applicants.tax_country'] = addressInfo.tax_country;
+    properties['tax_country'] = addressInfo.tax_country;
   }
   if (addressInfo?.has_children !== undefined) {
-    properties['custom_objects.aip_co_applicants.has_children'] = formatBoolean(addressInfo.has_children);
+    properties['has_children'] = formatBoolean(addressInfo.has_children);
   }
   if (addressInfo?.children && addressInfo.children.length > 0) {
-    properties['custom_objects.aip_co_applicants.children'] = formatCoApplicantChildrenDetails(addressInfo.children);
+    properties['children'] = formatCoApplicantChildrenDetails(addressInfo.children);
   }
 
   // Employment Details (from step 4)
   if (employmentInfo?.employment_status) {
-    properties['custom_objects.aip_co_applicants.employment_status'] = employmentInfo.employment_status;
+    properties['employment_status'] = employmentInfo.employment_status;
   }
   if (employmentInfo?.employment_details?.job_title) {
-    properties['custom_objects.aip_co_applicants.job_title'] = employmentInfo.employment_details.job_title;
+    properties['job_title'] = employmentInfo.employment_details.job_title;
   }
   if (employmentInfo?.employment_details?.employer_name) {
-    properties['custom_objects.aip_co_applicants.employer_name'] = employmentInfo.employment_details.employer_name;
+    properties['employer_name'] = employmentInfo.employment_details.employer_name;
   }
   if (employmentInfo?.employment_details?.employer_address) {
-    properties['custom_objects.aip_co_applicants.employer_address'] = employmentInfo.employment_details.employer_address;
+    properties['employer_address'] = employmentInfo.employment_details.employer_address;
   }
   if (employmentInfo?.employment_details?.gross_annual_salary !== undefined) {
-    properties['custom_objects.aip_co_applicants.gross_annual_salary'] = formatCurrency(employmentInfo.employment_details.gross_annual_salary);
+    properties['gross_annual_salary'] = formatCurrency(employmentInfo.employment_details.gross_annual_salary);
   }
   if (employmentInfo?.employment_details?.net_monthly_income !== undefined) {
-    properties['custom_objects.aip_co_applicants.net_monthly_income'] = formatCurrency(employmentInfo.employment_details.net_monthly_income);
+    properties['net_monthly_income'] = formatCurrency(employmentInfo.employment_details.net_monthly_income);
   }
   if (employmentInfo?.employment_details?.employment_start_date) {
-    properties['custom_objects.aip_co_applicants.employment_start_date'] = formatDate(employmentInfo.employment_details.employment_start_date);
+    properties['employment_start_date'] = formatDate(employmentInfo.employment_details.employment_start_date);
   }
   if (employmentInfo?.employment_details?.previous_employment_details) {
-    properties['custom_objects.aip_co_applicants.previous_employment_details'] = employmentInfo.employment_details.previous_employment_details;
+    properties['previous_employment_details'] = employmentInfo.employment_details.previous_employment_details;
   }
   if (employmentInfo?.employment_details?.business_name) {
-    properties['custom_objects.aip_co_applicants.business_name'] = employmentInfo.employment_details.business_name;
+    properties['business_name'] = employmentInfo.employment_details.business_name;
   }
   if (employmentInfo?.employment_details?.business_address) {
-    properties['custom_objects.aip_co_applicants.business_address'] = employmentInfo.employment_details.business_address;
+    properties['business_address'] = employmentInfo.employment_details.business_address;
   }
   if (employmentInfo?.employment_details?.business_website) {
-    properties['custom_objects.aip_co_applicants.business_website'] = employmentInfo.employment_details.business_website;
+    properties['business_website'] = employmentInfo.employment_details.business_website;
   }
   if (employmentInfo?.employment_details?.company_creation_date) {
-    properties['custom_objects.aip_co_applicants.company_creation_date'] = formatDate(employmentInfo.employment_details.company_creation_date);
+    properties['company_creation_date'] = formatDate(employmentInfo.employment_details.company_creation_date);
   }
   if (employmentInfo?.employment_details?.total_gross_annual_income !== undefined) {
-    properties['custom_objects.aip_co_aplicants.total_gross_annual_income'] = formatCurrency(employmentInfo.employment_details.total_gross_annual_income);
+    properties['total_gross_annual_income'] = formatCurrency(employmentInfo.employment_details.total_gross_annual_income);
   }
   if (employmentInfo?.employment_details?.net_annual_income !== undefined) {
-    properties['custom_objects.aip_co_applicants.net_annual_income'] = formatCurrency(employmentInfo.employment_details.net_annual_income);
+    properties['net_annual_income'] = formatCurrency(employmentInfo.employment_details.net_annual_income);
   }
   if (employmentInfo?.employment_details?.company_stake_percentage !== undefined) {
-    properties['custom_objects.aip_co_applicants.company_stake_percentage'] = employmentInfo.employment_details.company_stake_percentage;
+    properties['company_stake_percentage'] = employmentInfo.employment_details.company_stake_percentage;
   }
   if (employmentInfo?.employment_details?.bonus_overtime_commission_details) {
-    properties['custom_objects.aip_co_applicants.bonus_overtime_commission_details'] = employmentInfo.employment_details.bonus_overtime_commission_details;
+    properties['bonus_overtime_commission_details'] = employmentInfo.employment_details.bonus_overtime_commission_details;
   }
   if (employmentInfo?.employment_details?.accountant_can_provide_info !== undefined) {
-    properties['custom_objects.aip_co_applicants.accountant_can_provide_info'] = formatBoolean(employmentInfo.employment_details.accountant_can_provide_info);
+    properties['accountant_can_provide_info'] = formatBoolean(employmentInfo.employment_details.accountant_can_provide_info);
   }
   if (employmentInfo?.employment_details?.accountant_contact_details) {
-    properties['custom_objects.aip_co_applicants.accountant_contact_details'] = employmentInfo.employment_details.accountant_contact_details;
+    properties['accountant_contact_details'] = employmentInfo.employment_details.accountant_contact_details;
   }
 
   // Financial Information (from step 4 financial commitments)
   if (employmentInfo?.financial_commitments?.personal_loans !== undefined) {
-    properties['custom_objects.aip_co_applicants.personal_loans'] = formatCurrency(employmentInfo.financial_commitments.personal_loans);
+    properties['personal_loans'] = formatCurrency(employmentInfo.financial_commitments.personal_loans);
   }
   if (employmentInfo?.financial_commitments?.credit_card_debt !== undefined) {
-    properties['custom_objects.aip_co_applicants.credit_card_debt'] = formatCurrency(employmentInfo.financial_commitments.credit_card_debt);
+    properties['credit_card_debt'] = formatCurrency(employmentInfo.financial_commitments.credit_card_debt);
   }
   if (employmentInfo?.financial_commitments?.car_loans_lease !== undefined) {
-    properties['custom_objects.aip_co_applicants.car_loans_lease'] = formatCurrency(employmentInfo.financial_commitments.car_loans_lease);
+    properties['car_loans_lease'] = formatCurrency(employmentInfo.financial_commitments.car_loans_lease);
   }
   if (employmentInfo?.financial_commitments?.has_credit_or_legal_issues !== undefined) {
-    properties['custom_objects.aip_co_applicants.has_credit_or_legal_issues'] = formatBoolean(employmentInfo.financial_commitments.has_credit_or_legal_issues);
+    properties['has_credit_or_legal_issues'] = formatBoolean(employmentInfo.financial_commitments.has_credit_or_legal_issues);
   }
   if (employmentInfo?.financial_commitments?.credit_legal_issues_details) {
-    properties['custom_objects.aip_co_applicants.credit_legal_issues_details'] = employmentInfo.financial_commitments.credit_legal_issues_details;
+    properties['credit_legal_issues_details'] = employmentInfo.financial_commitments.credit_legal_issues_details;
   }
 
   return properties as GHLCoApplicantProperties;

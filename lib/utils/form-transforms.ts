@@ -211,12 +211,10 @@ export function transformDatabaseToFormStateNew(dbData: any): FormState | null {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         rental_properties: (primaryParticipant.rental_properties || []).map((property: any) => ({
           property_address: property.property_address || '',
-          monthly_rental_income: property.monthly_rental_income || 0,
-          rental_income_currency: property.rental_income_currency || 'EUR',
-          property_value: property.property_value || 0,
-          property_value_currency: property.property_value_currency || 'EUR',
+          current_valuation: property.current_valuation || 0,
           mortgage_outstanding: property.mortgage_outstanding || 0,
-          mortgage_outstanding_currency: property.mortgage_outstanding_currency || 'EUR',
+          monthly_mortgage_payment: property.monthly_mortgage_payment || 0,
+          monthly_rent_received: property.monthly_rent_received || 0,
           purchase_date: property.purchase_date ? new Date(property.purchase_date) : undefined,
         })),
         other_assets: primaryParticipant.other_assets || '',

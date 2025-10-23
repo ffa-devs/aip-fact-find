@@ -999,9 +999,28 @@ export async function saveStep5DataNew(
       }
     }
 
-    // Handle other assets if there's a separate table for them
-    // Note: The FormState has 'other_assets' as a string, but this might need 
-    // to be handled differently based on your database schema
+    // Save other_assets to the primary participant record
+    const { data: primaryParticipant } = await supabase
+      .from('application_participants')
+      .select('id')
+      .eq('application_id', applicationId)
+      .eq('participant_role', 'primary')
+      .single();
+
+    if (primaryParticipant) {
+      const { error: otherAssetsError } = await supabase
+        .from('application_participants')
+        .update({ 
+          other_assets: step5Data.other_assets || '',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', primaryParticipant.id);
+
+      if (otherAssetsError) {
+        console.error('Error saving other assets:', otherAssetsError);
+        return { success: false, error: otherAssetsError.message };
+      }
+    }
 
     console.log('✅ Step 5 data saved successfully');
     return { success: true };
@@ -1135,7 +1154,7 @@ export function transformDatabaseToFormStateNew(dbData: any): FormState | null {
       step5: {
         has_rental_properties: (dbData.rental_properties?.length || 0) > 0,
         rental_properties: dbData.rental_properties || [],
-        other_assets: dbData.additional_assets?.[0]?.asset_description || '',
+        other_assets: primaryParticipant.other_assets || '',
       },
       step6: {
         urgency_level: dbData.urgency_level || '',
