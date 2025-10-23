@@ -25,6 +25,35 @@ function formatChildrenDetails(children: Array<{
   }).join('\n\n');
 }
 
+/**
+ * Format rental properties array into a readable multi-line string
+ */
+function formatRentalPropertiesDetails(properties: Array<{
+  property_address?: string;
+  current_valuation?: number;
+  mortgage_outstanding?: number;
+  monthly_mortgage_payment?: number;
+  monthly_rent_received?: number;
+}>): string {
+  if (!properties || properties.length === 0) {
+    return 'No rental properties';
+  }
+
+  return properties.map((property, index) => {
+    const valuation = property.current_valuation ? `€${property.current_valuation.toLocaleString()}` : 'Not provided';
+    const mortgage = property.mortgage_outstanding ? `€${property.mortgage_outstanding.toLocaleString()}` : 'Not provided';
+    const monthlyPayment = property.monthly_mortgage_payment ? `€${property.monthly_mortgage_payment.toLocaleString()}` : 'Not provided';
+    const monthlyRent = property.monthly_rent_received ? `€${property.monthly_rent_received.toLocaleString()}` : 'Not provided';
+    
+    return `Property ${index + 1}:
+  Address: ${property.property_address || 'Not provided'}
+  Current Valuation: ${valuation}
+  Mortgage Outstanding: ${mortgage}
+  Monthly Mortgage Payment: ${monthlyPayment}
+  Monthly Rent Received: ${monthlyRent}`;
+  }).join('\n\n');
+}
+
 export interface GHLFieldOption {
   key: string;
   label: string;
@@ -420,7 +449,7 @@ export function mapFormDataToCustomFields(data: Record<string, unknown>): Array<
         case 'RADIO':
         case 'SINGLE_OPTIONS':
           // Special handling for boolean "Has" fields that need Yes/No values
-          if (typeof value === 'boolean' && (key === 'has_children' || key === 'has_co_applicants' || key === 'has_rental_properties')) {
+          if (typeof value === 'boolean' && (key === 'has_children' || key === 'has_co_applicants' || key === 'has_rental_properties' || key === 'has_credit_or_legal_issues')) {
             fieldValue = value ? 'Yes' : 'No';
           } else if (typeof value === 'boolean') {
             fieldValue = value.toString();
@@ -449,9 +478,11 @@ export function mapFormDataToCustomFields(data: Record<string, unknown>): Array<
           
         default:
           // TEXT and LARGE_TEXT - keep as string
-          // Special handling for children field
+          // Special handling for children and rental properties fields
           if (key === 'children' && Array.isArray(value)) {
             fieldValue = formatChildrenDetails(value);
+          } else if (key === 'rental_properties' && Array.isArray(value)) {
+            fieldValue = formatRentalPropertiesDetails(value);
           } else {
             fieldValue = String(value);
           }
