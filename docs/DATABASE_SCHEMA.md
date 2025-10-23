@@ -224,23 +224,13 @@ CREATE INDEX idx_rental_properties_application_id ON rental_properties(applicati
 
 ---
 
-### 7. `additional_assets` (Other Assets)
-Stores information about savings, investments, and other assets.
+### 7. `additional_assets` (Other Assets) - DEPRECATED
+**Note: This table has been removed. Other assets are now stored in `application_participants.other_assets` field.**
 
 ```sql
-CREATE TABLE additional_assets (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  application_id UUID REFERENCES applications(id) ON DELETE CASCADE,
-  
-  asset_description TEXT,
-  estimated_value DECIMAL(12, 2),
-  
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Index
-CREATE INDEX idx_assets_application_id ON additional_assets(application_id);
+-- This table is no longer used and has been removed
+-- Other assets are now stored as:
+-- application_participants.other_assets TEXT
 ```
 
 ---

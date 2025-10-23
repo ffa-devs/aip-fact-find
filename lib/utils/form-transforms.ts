@@ -228,7 +228,7 @@ export function transformDatabaseToFormStateNew(dbData: any): FormState | null {
         property_type: dbData.property_type || '',
         real_estate_agent_contact: dbData.real_estate_agent_contact || '',
         lawyer_contact: dbData.lawyer_contact || '',
-        additional_information: dbData.additional_information || '',
+        additional_information: dbData.additional_notes || '',
         authorization_consent: dbData.authorization_consent || false,
       },
       currentStep: dbData.current_step || 1,

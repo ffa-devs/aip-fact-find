@@ -46,7 +46,7 @@ export interface CoApplicantData {
 }
 
 /**
- * Create a co-applicant record in GHL Custom Objects
+ * Create or update a co-applicant record in GHL Custom Objects
  */
 export async function createCoApplicantRecord(
   coApplicantData: CoApplicantData,
@@ -58,7 +58,21 @@ export async function createCoApplicantRecord(
   }
 ): Promise<{ success: boolean; recordId?: string; error?: string }> {
   try {
-    console.log('🔄 Creating GHL co-applicant record for participant:', applicationData.participantId);
+    console.log('🔄 Creating/updating GHL co-applicant record for participant:', applicationData.participantId);
+
+    // Check if this participant already has a GHL co-applicant record ID
+    const { data: participant, error: participantError } = await supabase
+      .from('application_participants')
+      .select('ghl_co_applicant_record_id')
+      .eq('id', applicationData.participantId)
+      .single();
+
+    if (participantError) {
+      console.error('Error checking participant record:', participantError);
+      return { success: false, error: 'Failed to check existing co-applicant record' };
+    }
+
+    const existingRecordId = participant?.ghl_co_applicant_record_id;
 
     // Get OAuth token
     const { data: tokenData, error: tokenError } = await supabase
@@ -74,8 +88,6 @@ export async function createCoApplicantRecord(
     // Transform form data to GHL co-applicant properties with all fields
     const properties = transformCoApplicantDataToGHL(coApplicantData);
 
-    console.log('🔄 Sending complete co-applicant data to GHL with all fields...');
-
     // Create the custom object payload with all available data
     const customObjectPayload = {
       locationId: applicationData.locationId,
@@ -84,30 +96,50 @@ export async function createCoApplicantRecord(
 
     console.log('🔄 Sending co-applicant data to GHL:', {
       objectKey: 'custom_objects.aip_co_applicants',
+      operation: existingRecordId ? 'UPDATE' : 'CREATE',
+      recordId: existingRecordId || 'NEW',
       propertiesCount: Object.keys(properties).length,
       fieldNames: Object.keys(properties),
       properties
     });
 
-    // Make API call to create custom object record
-    const response = await fetch('https://services.leadconnectorhq.com/objects/custom_objects.aip_co_applicants/records', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${tokenData.access_token}`,
-        'Content-Type': 'application/json',
-        'Version': '2021-07-28'
-      },
-      body: JSON.stringify(customObjectPayload)
-    });
+    let response;
+    let apiUrl;
+
+    if (existingRecordId) {
+      // Update existing record
+      apiUrl = `https://services.leadconnectorhq.com/objects/custom_objects.aip_co_applicants/records/${existingRecordId}?locationId=${applicationData.locationId}`;
+      response = await fetch(apiUrl, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${tokenData.access_token}`,
+          'Content-Type': 'application/json',
+          'Version': '2021-07-28'
+        },
+        body: JSON.stringify(customObjectPayload)
+      });
+    } else {
+      // Create new record
+      apiUrl = 'https://services.leadconnectorhq.com/objects/custom_objects.aip_co_applicants/records';
+      response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${tokenData.access_token}`,
+          'Content-Type': 'application/json',
+          'Version': '2021-07-28'
+        },
+        body: JSON.stringify(customObjectPayload)
+      });
+    }
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('❌ GHL co-applicant record creation failed:', {
+      console.error(`❌ GHL co-applicant record ${existingRecordId ? 'update' : 'creation'} failed:`, {
         status: response.status,
         statusText: response.statusText,
         error: errorText,
         payload: customObjectPayload,
-        url: 'https://services.leadconnectorhq.com/objects/custom_objects.aip_co_applicants/records'
+        url: apiUrl
       });
       
       // Try to parse the error response for more details
@@ -126,30 +158,35 @@ export async function createCoApplicantRecord(
 
     const recordResponse: GHLCoApplicantResponse = await response.json();
     
-    console.log('✅ Co-applicant record created successfully:', {
-      recordId: recordResponse.id,
+    const operationType = existingRecordId ? 'updated' : 'created';
+    const finalRecordId = recordResponse.id || existingRecordId;
+    
+    console.log(`✅ Co-applicant record ${operationType} successfully:`, {
+      recordId: finalRecordId,
       participantId: applicationData.participantId
     });
 
-    // Save the record ID to the database
-    const { error: updateError } = await supabase
-      .from('application_participants')
-      .update({ 
-        ghl_co_applicant_record_id: recordResponse.id,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', applicationData.participantId);
+    // Save the record ID to the database (only if it's new or if we don't have it stored)
+    if (!existingRecordId || finalRecordId !== existingRecordId) {
+      const { error: updateError } = await supabase
+        .from('application_participants')
+        .update({ 
+          ghl_co_applicant_record_id: finalRecordId,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', applicationData.participantId);
 
-    if (updateError) {
-      console.error('❌ Failed to save co-applicant record ID to database:', updateError);
-      // Don't fail the whole operation, just log the error
-    } else {
-      console.log('✅ Co-applicant record ID saved to database');
+      if (updateError) {
+        console.error('❌ Failed to save co-applicant record ID to database:', updateError);
+        // Don't fail the whole operation, just log the error
+      } else {
+        console.log('✅ Co-applicant record ID saved to database');
+      }
     }
 
     return { 
       success: true, 
-      recordId: recordResponse.id 
+      recordId: finalRecordId 
     };
 
   } catch (error) {
