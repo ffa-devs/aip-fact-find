@@ -4,7 +4,7 @@
  * Handles creation and management of co-applicant records in GoHighLevel
  */
 
-import { supabase } from '@/lib/supabase/client';
+import { supabaseAdmin as supabase } from '@/lib/supabase/server';
 import { 
   GHLCoApplicantCustomObject, 
   GHLCoApplicantProperties, 
@@ -84,24 +84,21 @@ export async function createCoApplicantRecord(
     };
 
     console.log('🔄 Sending co-applicant data to GHL:', {
-      objectKey: 'custom_objects.aip_co_applicants',
+      objectKey: 'aip_co_applicants',
       owner: customObjectPayload.owner,
       propertiesCount: Object.keys(properties).length,
       properties
     });
 
     // Make API call to create custom object record
-    const response = await fetch('https://services.leadconnectorhq.com/objects/records', {
+    const response = await fetch('https://services.leadconnectorhq.com/objects/aip_co_applicants/records', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${tokenData.access_token}`,
         'Content-Type': 'application/json',
         'Version': '2021-07-28'
       },
-      body: JSON.stringify({
-        objectKey: 'custom_objects.aip_co_applicants',
-        ...customObjectPayload
-      })
+      body: JSON.stringify(customObjectPayload)
     });
 
     if (!response.ok) {
@@ -343,6 +340,43 @@ export async function createAllCoApplicantRecords(
   }
 
   console.log(`🔄 Creating ${coApplicants.length} co-applicant records for application ${applicationId}`);
+
+  // First, let's debug by checking ALL participants for this application
+  const { data: allParticipants, error: allError } = await supabase
+    .from('application_participants')
+    .select('*')
+    .eq('application_id', applicationId);
+
+  console.log('🔍 ALL participants for application:', {
+    applicationId,
+    allError,
+    allParticipants: allParticipants
+  });
+
+  // Also check if this application exists at all
+  const { data: applicationExists, error: appError } = await supabase
+    .from('applications')
+    .select('id, status, current_step')
+    .eq('id', applicationId)
+    .single();
+
+  console.log('🔍 Application existence check:', {
+    applicationId,
+    applicationExists,
+    appError
+  });
+
+  // Check if there are ANY participants for this app (maybe wrong role?)
+  const { data: allRoles, error: allRolesError } = await supabase
+    .from('application_participants')
+    .select('participant_role, participant_order, id')
+    .eq('application_id', applicationId);
+
+  console.log('🔍 All participant roles for application:', {
+    applicationId,
+    allRoles,
+    allRolesError
+  });
 
   // Get all co-applicant participants from the database
   const { data: participants, error: participantsError } = await supabase

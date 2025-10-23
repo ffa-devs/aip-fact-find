@@ -25,6 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
 import { FormNavigation } from '@/components/form/form-navigation';
 import { toast } from 'sonner';
 import { useState, useEffect } from 'react';
@@ -188,6 +189,64 @@ export function Step6SpanishProperty({ onNext }: Step6Props) {
         (firstError as HTMLElement).focus();
       }
     }, 100);
+  };
+
+  const testCoApplicantCreation = async () => {
+    setIsSubmitting(true);
+    
+    try {
+      const formState = useFormStore.getState();
+      const applicationId = formState.applicationId;
+      const ghlContactId = formState.ghlContactId;
+
+      if (!applicationId) {
+        toast.error('No application ID found. Please start from step 1.');
+        return;
+      }
+
+      if (!ghlContactId) {
+        toast.error('No GHL Contact ID found. Please submit the form normally first.');
+        return;
+      }
+
+      if (!formState.step2.co_applicants || formState.step2.co_applicants.length === 0) {
+        toast.warning('No co-applicants found to test. Please add co-applicants in step 2.');
+        return;
+      }
+
+      console.log('🧪 Testing co-applicant creation...', {
+        applicationId,
+        ghlContactId,
+        coApplicantsCount: formState.step2.co_applicants.length
+      });
+
+      toast.info(`Testing creation of ${formState.step2.co_applicants.length} co-applicant record(s)...`);
+
+      const coApplicantResponse = await fetch('/api/gohigh/create-co-applicants', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          applicationId,
+          formState,
+          contactId: ghlContactId
+        }),
+      });
+
+      const coApplicantResult = await coApplicantResponse.json();
+
+      if (coApplicantResponse.ok && coApplicantResult.success) {
+        console.log(`✅ Test successful: Created ${coApplicantResult.created} co-applicant records`);
+        toast.success(`✅ Test passed! Successfully created ${coApplicantResult.created} co-applicant record(s)`);
+      } else {
+        console.error('❌ Test failed:', coApplicantResult.errors || coApplicantResult.error);
+        toast.error('❌ Test failed: ' + (Array.isArray(coApplicantResult.errors) ? coApplicantResult.errors.join(', ') : coApplicantResult.error || 'Unknown error'));
+      }
+    } catch (error) {
+      console.error('❌ Test error:', error);
+      toast.error('❌ Test failed: ' + (error as Error).message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -434,6 +493,28 @@ export function Step6SpanishProperty({ onNext }: Step6Props) {
                   </FormItem>
                 )}
               />
+            </CardContent>
+          </Card>
+
+          {/* Test Co-Applicant Creation Button */}
+          <Card className="border-orange-200 bg-orange-50">
+            <CardContent className="pt-6">
+              <div className="flex flex-col space-y-3">
+                <h3 className="font-medium text-orange-800">🧪 Debug: Test Co-Applicant Creation</h3>
+                <p className="text-sm text-orange-700">
+                  Test the co-applicant GHL record creation without submitting the entire form.
+                  This will use the current form data and attempt to create co-applicant records in GoHighLevel.
+                </p>
+                <Button 
+                  type="button"
+                  variant="outline" 
+                  onClick={testCoApplicantCreation}
+                  disabled={isSubmitting}
+                  className="w-fit border-orange-300 text-orange-800 hover:bg-orange-100"
+                >
+                  {isSubmitting ? 'Testing...' : '🧪 Test Co-Applicant Creation'}
+                </Button>
+              </div>
             </CardContent>
           </Card>
 

@@ -70,6 +70,19 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Debug: Log the employment details
+    console.log('🔍 Application data loaded:', {
+      applicationId,
+      participantsCount: data?.application_participants?.length || 0,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      participants: data?.application_participants?.map((p: any) => ({
+        role: p.participant_role,
+        hasEmploymentDetails: !!p.employment_details,
+        employmentDetailsCount: Array.isArray(p.employment_details) ? p.employment_details.length : (p.employment_details ? 1 : 0),
+        employmentDetails: p.employment_details
+      })) || []
+    });
+
     // Fetch rental properties separately for each participant
     if (data?.application_participants?.length > 0) {
       for (let i = 0; i < data.application_participants.length; i++) {
